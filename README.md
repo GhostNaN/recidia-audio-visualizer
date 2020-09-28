@@ -50,6 +50,8 @@ ninja -C build
 And if you wish to install:
 ```
 ninja -C build install
+mkdir ~/.config/recidia/
+cp settings.cfg ~/.config/recidia/
 ```
 
  ## License

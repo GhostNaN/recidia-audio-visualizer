@@ -16,19 +16,20 @@ void get_settings(recidia_setings *settings) {
 
     // Set config settings
     Config cfg;
-    try {
-        cfg.readFile("../settings.cfg");
-    }
-    catch(const FileIOException &fioex) {
-        // Take 2
+    string homeDir = getenv("HOME");
+    string configFileLocations[] = {"",
+                                    "../",
+                                    homeDir + "/.config/recidia/"};
+    for (uint i=0; i < 3; i++) {
         try {
-            cfg.readFile("settings.cfg");
+            cfg.readFile((configFileLocations[i] + "settings.cfg").c_str());
+            break;
         }
         catch(const FileIOException &fioex) {
-            printf("\nCould not find settings.cfg file\n"
-            "Please have the file in the same dir as the executable\n\n");
+
         }
     }
+
     const Setting &root = cfg.getRoot();
 
     const Setting &controlledSettings = root["controlled_settings"];
