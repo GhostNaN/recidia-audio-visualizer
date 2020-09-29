@@ -5,11 +5,11 @@
 
 ## Diffrences from ReVidia(Python)
 The Good:
-- Not Python! It's C/C++ now.
+- No Python! It uses C/C++ now.
 - Much faster, at least 3x times
 - Way less RAM usage
 - Lower latency
-- Way better terminal version 
+- Better terminal version 
 - Proper config file "settings.cfg"
 
 The Bad:
@@ -21,15 +21,15 @@ The Bad:
 - gsl
   - Linear algebra
 - fftw 
-  - Fast Fourior Transform
+  - Fast Fourier Transform
 - ncurses
   - Teminal display
 - libconfig
   - Config file manager
 - portaudio
-  - Audio data colltion (Input Only)
+  - Audio data collection (Input Only)
 - pulseaudio(optional)
-  - Get output audio support from pulseaudio using ALSA
+  - Grab output audio from pulseaudio using ALSA
 
 If you use a Arch based distro here's a shortcut:
 ```
