@@ -47,7 +47,7 @@ static void grab_input(recidia_setings *settings, uint plots_count) {
                         if (settings->plot_height_cap > 1)
                             settings->plot_height_cap /= 1.25;
                     }
-                    else {  // Scroll Down
+                    else if (mouseEvent.bstate & BUTTON5_PRESSED) {  // Scroll Down
                         if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP)
                             settings->plot_height_cap *= 1.25;
                     }
@@ -139,12 +139,61 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
     mouseinterval(0); // No double click
 
     uint i, j;
-    uint ceiling, plotsCount;
+    uint ceiling;
     uint finalPlots[settings->MAX_AUDIO_BUFFER_SIZE/2];
     uint slices = 8;
 
+    // Used to show settings changes
+    uint audioBufferSize = settings->audio_buffer_size;
+    uint interp = settings->interp;
+    uint plotsCount = data->width / (settings->plot_width + settings->gap_width);
+    uint savgolWindowSize = settings->savgol_filter[0];
+    uint fps = settings->fps;
+
+    string settingToDisplay;
+    uint timeOfDisplayed = 0;
+    const uint SECONDS_TO_DISPLAY = 2;
+
+    uint frameCount = 0;
+    float realfps = 0;
+    double latency = 0;
+
 
     while (1) {
+
+        // Track setting changes
+        if (audioBufferSize != settings->audio_buffer_size) {
+            audioBufferSize = settings->audio_buffer_size;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Audio Buffer Size " + to_string(audioBufferSize);
+        }
+        if (interp != settings->interp) {
+            interp = settings->interp;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Interpolation " + to_string(interp) + "x";
+        }
+        if (plotsCount != data->width / (settings->plot_width + settings->gap_width)) {
+            plotsCount = data->width / (settings->plot_width + settings->gap_width);
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Plots " + to_string(plotsCount);
+        }
+        if (savgolWindowSize != settings->savgol_filter[0]) {
+            savgolWindowSize = settings->savgol_filter[0];
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Savgol Window Size " + to_string(savgolWindowSize);
+        }
+        if (fps != settings->fps) {
+            fps = settings->fps;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "FPS " + to_string(fps);
+        }
+
+
         getmaxyx(stdscr, data->height, data->width);
         plotsCount = data->width / (settings->plot_width + settings->gap_width);
         ceiling = data->height * slices;
@@ -195,24 +244,37 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             mvprintw(y, 0, printBarLine.c_str());
         }
 
-        auto latencyChrono = chrono::high_resolution_clock::now();
-        double latency = chrono::duration<double>(latencyChrono.time_since_epoch()).count();
-        latency -= data->time;
-        latency *= 1000;
-
+        if (settingToDisplay.compare("") != 0) {
+            if (frameCount % (settings->fps / 1) == 0) {
+                timeOfDisplayed += 1;
+            }
+            if (timeOfDisplayed < SECONDS_TO_DISPLAY) {
+                uint printPos  = (data->width - settingToDisplay.length()) / 2;
+                mvprintw(data->height / 2, printPos, "%s" ,settingToDisplay.c_str());
+            }
+            else {
+                settingToDisplay = "";
+            }
+        }
         if (settings->stats) {
-            int spacing = 15;
-            mvprintw(0, spacing * 0, "%s %i", "Height:" ,(int) settings->plot_height_cap);
-            mvprintw(1, spacing * 0, "%s %i", "SavGol:" ,settings->savgol_filter[0]);
-            mvprintw(2, spacing * 0, "%s %ix", "Interp:" ,settings->interp);
-            mvprintw(3, spacing * 0, "%s %i", "Buffer:" ,settings->audio_buffer_size);
+            if (frameCount % (settings->fps / 10) == 0) { // Slow down stats
+                auto latencyChrono = chrono::high_resolution_clock::now();
+                latency = chrono::duration<double>(latencyChrono.time_since_epoch()).count();
+                latency = (latency - data->time) * 1000;
 
-            mvprintw(0, spacing * 1, "%s %.1fms", "Latency:" ,latency);
-            mvprintw(1, spacing * 1, "%s %.1f", "FPS:" ,1000 / data->frame_time);
-            mvprintw(2, spacing * 1, "%s %i", "Plots:" ,plotsCount);
+                realfps = 1000 / data->frame_time;
+            }
+
+            mvprintw(0, 0, "%s %.1fms", "Latency:" ,latency);
+            mvprintw(1, 0, "%s %.1f", "FPS:" ,realfps);
+            mvprintw(2, 0, "%s %i", "Plots:" ,plotsCount);
         }
 
+
         refresh(); 
+        frameCount += 1;
+        if (frameCount > 1000000)
+            frameCount = 0;
 
         sync->status = 1; 
         while (sync->status) {
