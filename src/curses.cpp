@@ -144,10 +144,14 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
     uint slices = 8;
 
     // Used to show settings changes
-    uint audioBufferSize = settings->audio_buffer_size;
-    uint interp = settings->interp;
-    uint plotsCount = data->width / (settings->plot_width + settings->gap_width);
+    double plotHeightCap = settings->plot_height_cap;
+    uint plotWidth = settings->plot_width;
+    uint gapWidth = settings->gap_width;
     uint savgolWindowSize = settings->savgol_filter[0];
+    uint interp = settings->interp;
+    uint audioBufferSize = settings->audio_buffer_size;
+    uint plotsCount = data->width / (plotWidth + gapWidth);
+
     uint fps = settings->fps;
 
     string settingToDisplay;
@@ -160,25 +164,26 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
 
 
     while (1) {
+        getmaxyx(stdscr, data->height, data->width);
 
         // Track setting changes
-        if (audioBufferSize != settings->audio_buffer_size) {
-            audioBufferSize = settings->audio_buffer_size;
+        if (plotHeightCap != settings->plot_height_cap) {
+            plotHeightCap = settings->plot_height_cap;
 
             timeOfDisplayed = 0;
-            settingToDisplay = "Audio Buffer Size " + to_string(audioBufferSize);
+            settingToDisplay = "Height Cap " + to_string((int) plotHeightCap);
         }
-        if (interp != settings->interp) {
-            interp = settings->interp;
+        if (plotWidth != settings->plot_width) {
+            plotWidth = settings->plot_width;
 
             timeOfDisplayed = 0;
-            settingToDisplay = "Interpolation " + to_string(interp) + "x";
+            settingToDisplay = "Plot Width " + to_string(plotWidth);
         }
-        if (plotsCount != data->width / (settings->plot_width + settings->gap_width)) {
-            plotsCount = data->width / (settings->plot_width + settings->gap_width);
+        if (gapWidth != settings->gap_width) {
+            gapWidth = settings->gap_width;
 
             timeOfDisplayed = 0;
-            settingToDisplay = "Plots " + to_string(plotsCount);
+            settingToDisplay = "Gap Width " + to_string(gapWidth);
         }
         if (savgolWindowSize != settings->savgol_filter[0]) {
             savgolWindowSize = settings->savgol_filter[0];
@@ -186,23 +191,37 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             timeOfDisplayed = 0;
             settingToDisplay = "Savgol Window Size " + to_string(savgolWindowSize);
         }
+        if (interp != settings->interp) {
+            interp = settings->interp;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Interpolation " + to_string(interp) + "x";
+        }
+        if (audioBufferSize != settings->audio_buffer_size) {
+            audioBufferSize = settings->audio_buffer_size;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Audio Buffer Size " + to_string(audioBufferSize);
+        }
         if (fps != settings->fps) {
             fps = settings->fps;
 
             timeOfDisplayed = 0;
             settingToDisplay = "FPS " + to_string(fps);
         }
+        if (plotsCount != (data->width / (plotWidth + gapWidth))) {
+            plotsCount = data->width / (plotWidth + gapWidth);
 
+            clear();
+        }
 
-        getmaxyx(stdscr, data->height, data->width);
-        plotsCount = data->width / (settings->plot_width + settings->gap_width);
         ceiling = data->height * slices;
 
         // Finalize plots height
         for (i=0; i < plotsCount; i++ ) {
 
             // Scale plots
-            finalPlots[i] = data->plots[i] * ((float) ceiling / settings->plot_height_cap);
+            finalPlots[i] = data->plots[i] * ((float) ceiling / plotHeightCap);
             if (finalPlots[i] > ceiling) {
                 finalPlots[i] = ceiling;
             }
@@ -219,7 +238,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             for (i=0; i < plotsCount; i++) {
 
                 if (limit <= finalPlots[i]) {   // Full
-                    for (j=0; j < settings->plot_width; j++) {
+                    for (j=0; j < plotWidth; j++) {
                         printBarLine += "\u2588";
                     }
                 }
@@ -227,16 +246,16 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
 
                     unsigned int block = finalPlots[i] % slices;
                     string stringBlock = blockList[block - 1];
-                    for (j=0; j < settings->plot_width; j++) {
+                    for (j=0; j < plotWidth; j++) {
                         printBarLine += stringBlock;
                     }
                 }
                 else {   // Empty
-                    for (j=0; j < settings->plot_width; j++) {
+                    for (j=0; j < plotWidth; j++) {
                         printBarLine += " ";
                     }
                 }
-                for (j=0; j < settings->gap_width; j++) {
+                for (j=0; j < gapWidth; j++) {
                     printBarLine += " ";
                 }
 
@@ -270,8 +289,8 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             mvprintw(2, 0, "%s %i", "Plots:" ,plotsCount);
         }
 
-
         refresh(); 
+
         frameCount += 1;
         if (frameCount > 1000000)
             frameCount = 0;
