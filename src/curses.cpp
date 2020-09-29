@@ -178,12 +178,16 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
 
             timeOfDisplayed = 0;
             settingToDisplay = "Plot Width " + to_string(plotWidth);
+
+            clear();
         }
         if (gapWidth != settings->gap_width) {
             gapWidth = settings->gap_width;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Gap Width " + to_string(gapWidth);
+
+            clear();
         }
         if (savgolWindowSize != settings->savgol_filter[0]) {
             savgolWindowSize = settings->savgol_filter[0];
