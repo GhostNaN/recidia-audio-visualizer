@@ -2,6 +2,7 @@
 #include <locale.h>
 #include <chrono>
 #include <unistd.h>
+#include <math.h>
 
 #include <ncurses.h>
 
@@ -44,23 +45,39 @@ static void grab_input(recidia_setings *settings, uint plots_count) {
 
                 if(getmouse(&mouseEvent) == OK) {
                     if (mouseEvent.bstate & BUTTON4_PRESSED) { // Scroll Up
-                        if (settings->plot_height_cap > 1)
+                        if (settings->plot_height_cap > 1) {
                             settings->plot_height_cap /= 1.25;
+
+                            if (settings->plot_height_cap < 1)
+                                settings->plot_height_cap = 1;
+                        }
                     }
                     else if (mouseEvent.bstate & BUTTON5_PRESSED) {  // Scroll Down
-                        if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP)
+                        if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP) {
                             settings->plot_height_cap *= 1.25;
+
+                            if (settings->plot_height_cap > settings->MAX_PLOT_HEIGHT_CAP)
+                                settings->plot_height_cap = settings->MAX_PLOT_HEIGHT_CAP;
+                        }
                     }
                 }
                 break;
 
             case PLOT_HEIGHT_CAP_DECREASE:
-                if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP)
+                if (settings->plot_height_cap > 1) {
                     settings->plot_height_cap /= 1.5;
+
+                    if (settings->plot_height_cap < 1)
+                        settings->plot_height_cap = 1;
+                }
                 break;
             case PLOT_HEIGHT_CAP_INCREASE:
-                if (settings->plot_height_cap > 1)
+                if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP) {
                     settings->plot_height_cap *= 1.5;
+
+                    if (settings->plot_height_cap > settings->MAX_PLOT_HEIGHT_CAP)
+                        settings->plot_height_cap = settings->MAX_PLOT_HEIGHT_CAP;
+                }
                 break;
 
             case PLOT_WIDTH_DECREASE:
@@ -170,8 +187,13 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
         if (plotHeightCap != settings->plot_height_cap) {
             plotHeightCap = settings->plot_height_cap;
 
+            float db  = 20 * log10(plotHeightCap / 32768);
+            char dbCharArrayt[5];
+            sprintf(dbCharArrayt, "%.1f", db);
+            string dbString(dbCharArrayt);
+
             timeOfDisplayed = 0;
-            settingToDisplay = "Height Cap " + to_string((int) plotHeightCap);
+            settingToDisplay = "Volume Cap " + dbString + "db";
         }
         if (plotWidth != settings->plot_width) {
             plotWidth = settings->plot_width;
