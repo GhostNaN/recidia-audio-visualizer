@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <iostream>
 #include <cmath>
 #include <vector>
 #include <ncurses.h>
@@ -34,8 +33,8 @@ int main() {
     vector<string> deviceNames;
     if (pulseDefaultsPtr) {
         pulseDefaults = 2;
-        deviceNames.push_back(" Default PulseAudio Output");
-        deviceNames.push_back(" Default PulseAudio Input");
+        deviceNames.push_back("Default PulseAudio Output");
+        deviceNames.push_back("Default PulseAudio Input");
     }
 
     i = 0;
@@ -45,116 +44,33 @@ int main() {
     }
     free(deviceNamesPtr);
 
-    vector<string> pulseMonitors;
-    i = 0;
-    if (pulseMonitorsPtr) {
-        while (pulseMonitorsPtr[i]) {
-            pulseMonitors.push_back(pulseMonitorsPtr[i]);
-            i++;
-        }
-    }
-    free(pulseMonitorsPtr);
-
-    vector<int> portIndexes;
-    i = 0;
-    while (portIndexesPtr[i]) {
-        portIndexes.push_back(portIndexesPtr[i]);
-        i++;
-    }
-    free(portIndexesPtr);
-
     // Print Devices
     for (i=0; i < deviceNames.size(); i++) {
-
-        if (i < pulseDefaults) {    // Pulse Defaults
-            cout << to_string(i) + deviceNames[i] + "\n";
-        }
-        else if (i < pulseMonitors.size() + pulseDefaults) {    // Outputs
-            cout << to_string(i) + " Output: " + deviceNames[i] + "\n";
-        }
-        else {  // Inputs
-            cout << to_string(i) + " Input: " + deviceNames[i] + "\n";
-        }
+        printf("%i %s\n", i, deviceNames[i].c_str());
     }
 
     // Get input
     uint deviceIndex = 0;
     printf("Enter device index:\n");
-    cin >> deviceIndex;
+    scanf("%i", &deviceIndex);
+
 
     int portDeviceIndex = 0;
-    if (deviceIndex < (uint) pulseMonitors.size() + pulseDefaults ) { // Pulseaudio
-        string pulseDevice;
+    if (deviceIndex < (uint) (sizeof(pulseMonitorsPtr) / sizeof(*pulseMonitorsPtr[0])) + pulseDefaults ) { // Pulseaudio
+        char *pulseDevice;
 
         if (deviceIndex < pulseDefaults) {
             pulseDevice = pulseDefaultsPtr[deviceIndex];
         }
         else {
-            pulseDevice = pulseMonitors[deviceIndex - pulseDefaults];
+            pulseDevice = pulseMonitorsPtr[deviceIndex - pulseDefaults];
         }
 
-        string homeDir = getenv("HOME");
-        ifstream fileRead(homeDir + "/.asoundrc");
-
-        // Check/Clean lines for an old "pcm.revidia_capture" device
-        if (fileRead.is_open()) {
-            string cleanAsoundrc;
-            string line;
-            int skip = 0;
-            while (getline(fileRead, line)) {
-                if (!skip) {
-                    if (line.find("pcm.recidia_capture") != string::npos) {
-                        skip = 1;
-                    }
-                    else {
-                        cleanAsoundrc += line + "\n";
-                    }
-                }
-                else {
-                    if (line.find("}") != string::npos) {
-                        skip = 0;
-                    }
-                }
-            }
-            fileRead.close();
-
-            ofstream fileWrite(homeDir + "/.asoundrc");
-            fileWrite << cleanAsoundrc;
-        }
-
-        // Create ALSA device to connect to PulseAudio
-        ofstream fileAppend(homeDir + "/.asoundrc", ios::out | ios::app);
-        if (fileAppend.is_open()) {
-
-            string recidiaAlsaDevice =
-                    "pcm.recidia_capture {\n"
-                    "\ttype pulse\n"
-                    "\tdevice " + pulseDevice + "\n" +
-                    "}";
-            fileAppend << recidiaAlsaDevice;
-        }
-        fileAppend.close();
-
-
-        // Get portaudio device index
-        Pa_Initialize();
-
-        uint paDeviceNum = Pa_GetDeviceCount();
-
-        for(i=0; i < paDeviceNum; i++) {
-            const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
-            string paDeviceName = deviceInfo->name;
-            if (paDeviceName.find("recidia_capture") != string::npos) {
-                portDeviceIndex = i;
-                break;
-            }
-        }
-
-        Pa_Terminate();
+        portDeviceIndex = pulse_monitor_to_port_index(pulseDevice);
     }
     else { // Portaudio
-        int index = deviceIndex - (pulseMonitors.size() + pulseDefaults);
-        portDeviceIndex = portIndexes[index];
+        int index = deviceIndex - ((sizeof(pulseMonitorsPtr) / sizeof(*pulseMonitorsPtr[0])) + pulseDefaults);
+        portDeviceIndex = portIndexesPtr[index];
     }
 
     // Get settings

@@ -57,8 +57,9 @@ static void get_source_info_callback(pa_context *c, const pa_source_info *i, int
     if (!device_name) {
         device_name = (char*) i->monitor_of_sink_name;
     }
-    monitor->device_name = malloc((strlen(device_name) + 1) * sizeof(char*));
-    strcpy(monitor->device_name, device_name);
+    monitor->device_name = malloc((strlen("Output: ") + strlen(device_name) + 1) * sizeof(char*));
+    strcpy(monitor->device_name, "Output: ");
+    strcat(monitor->device_name, device_name);
 
     monitor->next = pulse_head;
     pulse_head = monitor;
@@ -129,8 +130,9 @@ static void get_port_info() {
             device = malloc(sizeof(struct port_device_info));
 
             char *device_name = (char*) device_info->name;
-            device->name = malloc((strlen(device_name) + 1) * sizeof(char*));
-            strcpy(device->name, device_name);
+            device->name = malloc((strlen("Input: ") + strlen(device_name) + 1) * sizeof(char*));
+            strcpy(device->name, "Input: ");
+            strcat(device->name, device_name);
 
             device->index = i;
 
@@ -248,4 +250,88 @@ void collect_audio_data(struct pa_data *audio_data, int device_index) {
 
     Pa_StartStream(stream);
 
+}
+
+// Check/Clean lines for an old "pcm.revidia_capture" device
+void clean_asound() {
+
+    char *home_dir = getenv("HOME");
+    char *asound_file_path = malloc((strlen(home_dir) + strlen("/.asoundrc") + 1) * sizeof(char*));
+    strcpy(asound_file_path, home_dir);
+    strcat(asound_file_path, "/.asoundrc");
+
+    FILE *asound_file;
+    FILE *temp;
+
+    asound_file = fopen(asound_file_path, "a+");
+
+    temp = fopen("asoundtemp", "w+");
+
+    char line[128];
+
+    int skip = 0;
+    while (fgets(line, sizeof(line), asound_file)) {
+        if (!skip) {
+            if (strcmp(line, "pcm.recidia_capture {\n") == 0) {
+                skip = 1;
+            }
+            else {
+                fprintf(temp, "%s", line);
+            }
+        }
+        else {
+            if (strcmp(line, "}\n") == 0) {
+                skip = 0;
+            }
+        }
+    }
+    fclose(temp);
+    fclose(asound_file);
+    // Overwrite .asoundrc
+    rename("asoundtemp", asound_file_path);
+
+}
+
+int pulse_monitor_to_port_index(const char *pulse_monitor) {
+
+    clean_asound();
+
+    char *home_dir = getenv("HOME");
+    char *asound_file_path = malloc((strlen(home_dir) + strlen("/.asoundrc") + 1) * sizeof(char*));
+    strcpy(asound_file_path, home_dir);
+    strcat(asound_file_path, "/.asoundrc");
+
+    FILE *asound_file;
+
+    // Create ALSA device to connect to PulseAudio
+    asound_file = fopen(asound_file_path, "a");
+
+    char *recidiaAlsaDevice = malloc((strlen(pulse_monitor) + 50) * sizeof(char*));
+    strcpy(recidiaAlsaDevice,   "pcm.recidia_capture {\n"
+                                "\ttype pulse\n"
+                                "\tdevice ");
+    strcat(recidiaAlsaDevice, pulse_monitor);
+    strcat(recidiaAlsaDevice, "\n}");
+
+    fputs(recidiaAlsaDevice, asound_file);
+
+    fclose(asound_file);
+
+    // Get portaudio device index
+    Pa_Initialize();
+    uint portDeviceIndex = 0;
+
+    uint paDeviceNum = Pa_GetDeviceCount();
+    for(uint i=0; i < paDeviceNum; i++) {
+        const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
+        char *paDeviceName = (char*) deviceInfo->name;
+        if (strcmp(paDeviceName, "recidia_capture") == 0) {
+            portDeviceIndex = i;
+            break;
+        }
+    }
+
+    Pa_Terminate();
+
+    return portDeviceIndex;
 }
