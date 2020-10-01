@@ -17,6 +17,8 @@ extern "C" {
     void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pulse_defaults, int **pa_indexes);
 
     void collect_audio_data(struct pa_data *audio_data, int device_index);
+    
+    int pulse_monitor_to_port_index(const char *pulse_monitor);
 }
 #endif
 
