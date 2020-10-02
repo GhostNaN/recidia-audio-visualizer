@@ -18,48 +18,56 @@
 
 using namespace std;
 
-int main() {
+int main(int argc, char **argv) {
+    // GUI if any arg else it's terminal
+    int GUI = argc-1;
+
     uint i;
 
-    char **deviceNamesPtr;
-    char **pulseMonitorsPtr;
-    char **pulseDefaultsPtr;
-    int *portIndexesPtr;
+    char **deviceNamesPtr = NULL;
+    char **pulseMonitorsPtr = NULL;
+    char **pulseDefaultsPtr = NULL;
+    int *portIndexesPtr = NULL;
 
     get_audio_devices(&deviceNamesPtr, &pulseMonitorsPtr, &pulseDefaultsPtr, &portIndexesPtr);
 
-    // C Pointers to C++ Vectors
+    uint monitorCount = 0;
+    if (pulseMonitorsPtr) {
+        while (pulseMonitorsPtr[monitorCount]) {
+            monitorCount++;
+        }
+    }
+
     uint pulseDefaults = 0;
-    vector<string> deviceNames;
     if (pulseDefaultsPtr) {
         pulseDefaults = 2;
-        deviceNames.push_back("Default PulseAudio Output");
-        deviceNames.push_back("Default PulseAudio Input");
     }
 
-    i = 0;
-    while (deviceNamesPtr[i]) {
-        deviceNames.push_back(deviceNamesPtr[i]);
-        i++;
-    }
-    free(deviceNamesPtr);
-
-    // Print Devices
-    for (i=0; i < deviceNames.size(); i++) {
-        printf("%i %s\n", i, deviceNames[i].c_str());
-    }
-
-    // Get input
     uint deviceIndex = 0;
-    printf("Enter device index:\n");
-    scanf("%i", &deviceIndex);
+    if (!GUI) {
+        // Print devices for terminal version
+        if (pulseDefaults) {
+            printf("0 Default PulseAudio Output\n");
+            printf("1 Default PulseAudio Input\n");
+        }
 
+        i = 0;
+        while (deviceNamesPtr[i]) {
+            printf("%i %s\n", i+pulseDefaults, deviceNamesPtr[i]);
+            i++;
+        }
 
+        // Get input
+        printf("Enter device index:\n");
+        scanf("%i", &deviceIndex);
+    }
+
+    // Get portaudio device index
     int portDeviceIndex = 0;
-    if (deviceIndex < (uint) (sizeof(pulseMonitorsPtr) / sizeof(*pulseMonitorsPtr[0])) + pulseDefaults ) { // Pulseaudio
+    if (deviceIndex < (monitorCount + pulseDefaults)) { // Pulseaudio
         char *pulseDevice;
 
-        if (deviceIndex < pulseDefaults) {
+        if (deviceIndex < pulseDefaults) { // If default device
             pulseDevice = pulseDefaultsPtr[deviceIndex];
         }
         else {
@@ -69,7 +77,7 @@ int main() {
         portDeviceIndex = pulse_monitor_to_port_index(pulseDevice);
     }
     else { // Portaudio
-        int index = deviceIndex - ((sizeof(pulseMonitorsPtr) / sizeof(*pulseMonitorsPtr[0])) + pulseDefaults);
+        int index = deviceIndex - (monitorCount + pulseDefaults);
         portDeviceIndex = portIndexesPtr[index];
     }
 
