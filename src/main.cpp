@@ -1,17 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <cmath>
-#include <vector>
-#include <ncurses.h>
-#include <locale.h>
 #include <unistd.h>
-#include <fstream>
-#include <algorithm>
+#include <string>
 #include <chrono>
 #include <thread>
 
-#include <portaudio.h>
 #include <fftw3.h>
 
 #include <recidia.h>
@@ -80,6 +71,12 @@ int main(int argc, char **argv) {
         int index = deviceIndex - (monitorCount + pulseDefaults);
         portDeviceIndex = portIndexesPtr[index];
     }
+
+    // Free device index stuff
+    free(deviceNamesPtr);
+    free(pulseMonitorsPtr);
+    free(pulseDefaultsPtr);
+    free(portIndexesPtr);
 
     // Get settings
     recidia_setings settings;

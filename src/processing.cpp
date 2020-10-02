@@ -1,8 +1,7 @@
-#include <stdlib.h>
+#include <unistd.h>
 #include <cmath>
 #include <algorithm>
 #include <vector>
-#include <unistd.h>
 #include <chrono>
 
 #include <fftw3.h>
@@ -240,6 +239,7 @@ void init_processing(recidia_setings *settings, recidia_data *plot_data, pa_data
         // Convert samples to double for FFTW
         for (i=0; i < audioBufferSize; i++ ) {
             fftIn[i] = (double) audio_data->samples[i];
+//            fftIn[i] =  32768 * sin(2 * 3.1415 * 5000 * (i / (double) 44100));
         }
 
         // For latency display

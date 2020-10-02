@@ -105,6 +105,11 @@ static void get_pulse_info() {
     pa_context_connect(context, server, 0, NULL);
 
     pa_mainloop_run(m, &ret);
+
+    pa_context_unref(context);
+    pa_mainloop_free(m);
+    pa_xfree(server);
+    pa_proplist_free(proplist);
 }
 #endif
 
@@ -166,12 +171,15 @@ void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pul
     *pulse_monitors = malloc(alloc_size.pulse_monitor + sizeof(NULL));
 
     struct pulse_monitors_info *pulse_ptr;
-    pulse_ptr = pulse_head;
 
-    while (pulse_ptr != NULL) {
-        (*device_names)[i] = pulse_ptr->device_name;
-        (*pulse_monitors)[i] = pulse_ptr->name;
-        pulse_ptr = pulse_ptr->next;
+    while (pulse_head != NULL) {
+        pulse_ptr = pulse_head;
+
+        (*device_names)[i] = pulse_head->device_name;
+        (*pulse_monitors)[i] = pulse_head->name;
+        pulse_head = pulse_head->next;
+
+        free(pulse_ptr);
         i++;
     }
     (*pulse_monitors)[i] = NULL; // End marker
@@ -180,13 +188,16 @@ void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pul
     *port_indexes = malloc(alloc_size.port_index + sizeof(int*));
 
     struct port_device_info *port_ptr;
-    port_ptr = port_head;
 
     int p = 0;
-    while (port_ptr != NULL) {
-        (*device_names)[i] = port_ptr->name;
-        (*port_indexes)[p] = port_ptr->index;
-        port_ptr = port_ptr->next;
+    while (port_head != NULL) {
+        port_ptr = port_head;
+
+        (*device_names)[i] = port_head->name;
+        (*port_indexes)[p] = port_head->index;
+        port_head = port_head->next;
+
+        free(port_ptr);
         i++;
         p++;
     }
@@ -195,7 +206,6 @@ void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pul
     (*device_names)[i] = NULL; // End marker
 
     system("clear");
-
 }
 
 static int recordCallback( const void *inputBuffer, void *outputBuffer,
@@ -290,6 +300,7 @@ void clean_asound() {
     // Overwrite .asoundrc
     rename("asoundtemp", asound_file_path);
 
+    free(asound_file_path);
 }
 
 int pulse_monitor_to_port_index(const char *pulse_monitor) {
@@ -332,6 +343,9 @@ int pulse_monitor_to_port_index(const char *pulse_monitor) {
     }
 
     Pa_Terminate();
+
+    free(asound_file_path);
+    free(recidiaAlsaDevice);
 
     return portDeviceIndex;
 }

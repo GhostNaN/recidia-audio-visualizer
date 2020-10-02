@@ -1,7 +1,7 @@
+#include <unistd.h>
 #include <string>
 #include <locale.h>
 #include <chrono>
-#include <unistd.h>
 #include <math.h>
 
 #include <ncurses.h>
