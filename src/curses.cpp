@@ -155,10 +155,14 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
     mousemask(ALL_MOUSE_EVENTS, NULL);
     mouseinterval(0); // No double click
 
+    // Initialize vars
     uint i, j;
     uint ceiling;
     uint finalPlots[settings->MAX_AUDIO_BUFFER_SIZE/2];
-    uint slices = 8;
+    uint frameCount = 0;
+    float realfps = 0;
+    double latency = 0;
+    uint slices = 8;    // How many pieces/slices of a char block is shown
 
     // Used to show settings changes
     double plotHeightCap = settings->plot_height_cap;
@@ -168,17 +172,11 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
     uint interp = settings->interp;
     uint audioBufferSize = settings->audio_buffer_size;
     uint plotsCount = data->width / (plotWidth + gapWidth);
-
     uint fps = settings->fps;
 
     string settingToDisplay;
     uint timeOfDisplayed = 0;
     const uint SECONDS_TO_DISPLAY = 2;
-
-    uint frameCount = 0;
-    float realfps = 0;
-    double latency = 0;
-
 
     while (1) {
         getmaxyx(stdscr, data->height, data->width);
@@ -253,7 +251,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             }
         }
 
-        // Print bars
+        // Print plots/bars
         string blockList[] = {"\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587"};
 
         for (unsigned int y = 0; y < data->height; y++) {
@@ -289,6 +287,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             mvprintw(y, 0, printBarLine.c_str());
         }
 
+        // Show changes in settings on scrren
         if (settingToDisplay.compare("") != 0) {
             if (frameCount % (settings->fps / 1) == 0) {
                 timeOfDisplayed += 1;
@@ -301,6 +300,8 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
                 settingToDisplay = "";
             }
         }
+
+        // Draw stats
         if (settings->stats) {
             if (frameCount % (settings->fps / 10) == 0) { // Slow down stats
                 auto latencyChrono = chrono::high_resolution_clock::now();
@@ -315,12 +316,14 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             mvprintw(2, 0, "%s %i", "Plots:" ,plotsCount);
         }
 
+        // Draw frame
         refresh(); 
 
         frameCount += 1;
         if (frameCount > 1000000)
             frameCount = 0;
 
+        // Wait and process user input
         sync->status = 1; 
         while (sync->status) {
             usleep(1000);

@@ -251,10 +251,10 @@ void collect_audio_data(struct pa_data *audio_data, int device_index) {
     Pa_OpenStream(
         &stream,
         &input_parameters,
-        NULL,                  /* &outputParameters, */
+        NULL, // Output disabled
         audio_data->sample_rate,
         1,
-        paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+        paNoFlag,
         recordCallback,
         audio_data );
 

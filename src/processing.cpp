@@ -326,11 +326,12 @@ void init_processing(recidia_setings *settings, recidia_data *plot_data, pa_data
             }
         }
 
-        // Finalize plots
+        // Send out plots
         for (i=0; i < plotsCount; i++ ) {
             plot_data->plots[i] = proArray[i];
         }
 
+        // Wait
         sync->status = 1;
         while (sync->status) { usleep(1000); }
     }

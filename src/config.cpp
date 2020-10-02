@@ -14,7 +14,7 @@ constexpr uint str2int(const char* str, int h = 0) {
 
 void get_settings(recidia_setings *settings) {
 
-    // Set config settings
+    // Get location of settings.cfg
     Config cfg;
     string homeDir = getenv("HOME");
     string configFileLocations[] = {"",
@@ -33,6 +33,7 @@ void get_settings(recidia_setings *settings) {
         }
     }
 
+    // Set settings from settings.cfg
     const Setting &root = cfg.getRoot();
 
     const Setting &controlledSettings = root["controlled_settings"];

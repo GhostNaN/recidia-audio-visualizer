@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
 
     uint i;
 
+    // Get audio device to choose from
     char **deviceNamesPtr = NULL;
     char **pulseMonitorsPtr = NULL;
     char **pulseDefaultsPtr = NULL;
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
     if (pulseDefaultsPtr) {
         pulseDefaults = 2;
     }
+
 
     uint deviceIndex = 0;
     if (!GUI) {
