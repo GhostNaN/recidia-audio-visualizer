@@ -31,10 +31,9 @@ The Bad:
 - pulseaudio(optional)
   - Grab output audio from pulseaudio using ALSA
 
-If you use a Arch based distro here's a shortcut:
-```
-sudo pacman -S gsl fftw ncurses libconfig portaudio
-```
+## Installers
+#### Arch:
+AUR package - https://aur.archlinux.org/packages/recidia-audio-visualizer/
  ## Building
  #### Requirements:
 - meson
