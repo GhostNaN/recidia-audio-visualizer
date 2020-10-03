@@ -32,7 +32,7 @@ The Bad:
   - Grab output audio from pulseaudio using ALSA
 
 ## Installers
-#### Arch:
+### Arch:
 AUR package - https://aur.archlinux.org/packages/recidia-audio-visualizer/
  ## Building
  #### Requirements:
