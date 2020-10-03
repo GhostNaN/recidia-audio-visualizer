@@ -19,14 +19,15 @@ void get_settings(recidia_setings *settings) {
     string homeDir = getenv("HOME");
     string configFileLocations[] = {"",
                                     "../",
-                                    homeDir + "/.config/recidia/"};
-    for (uint i=0; i < 3; i++) {
+                                    homeDir + "/.config/recidia/",
+                                    "/etc/recidia/"};
+    for (uint i=0; i < 4; i++) {
         try {
             cfg.readFile((configFileLocations[i] + "settings.cfg").c_str());
             break;
         }
         catch(const FileIOException &fioex) {
-            if (i == 2) {
+            if (i == 3) {
                 printf("\nCould not find settings.cfg file\n"
                 "Please check settings.cfg for suitable locations\n\n");
             }
