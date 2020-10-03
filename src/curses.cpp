@@ -186,7 +186,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             plotHeightCap = settings->plot_height_cap;
 
             float db  = 20 * log10(plotHeightCap / 32768);
-            char dbCharArrayt[5];
+            char dbCharArrayt[10];
             sprintf(dbCharArrayt, "%.1f", db);
             string dbString(dbCharArrayt);
 
