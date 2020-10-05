@@ -28,7 +28,7 @@ void get_settings(recidia_setings *settings) {
         }
         catch(const FileIOException &fioex) {
             if (i == 3) {
-                printf("\nCould not find settings.cfg file\n"
+                fprintf(stderr, "\nCould not find settings.cfg file\n"
                 "Please check settings.cfg for suitable locations\n\n");
             }
         }

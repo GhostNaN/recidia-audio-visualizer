@@ -2,36 +2,23 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
-#ifdef PULSE
+#ifdef PULSEAUDIO
 #include <pulse/pulseaudio.h>
+#include <pulse/simple.h>
 #endif
+
+#ifdef PORTAUDIO
 #include <portaudio.h>
+#endif
 
 #include <recidia.h>
 
-struct alloc_info {
-    int device_name;
-    int pulse_monitor;
-    int port_index;
-};
-struct alloc_info alloc_size;
-
-#ifdef PULSE
-static pa_context *context = NULL;
+#ifdef PULSEAUDIO
 static pa_mainloop_api *mainloop_api = NULL;
-static pa_proplist *proplist = NULL;
-
-struct pulse_monitors_info {
-    char *name;
-    char *device_name;
-    struct pulse_monitors_info *next;
-
-};
-struct pulse_monitors_info *pulse_head = NULL;
-
-char *default_monitor;
-char *default_input;
+struct pulse_device_info *pulse_head = NULL;
+static char *default_monitor;
 
 static void get_source_info_callback(pa_context *c, const pa_source_info *i, int is_last, void *userdata) {
     (void) c;
@@ -41,31 +28,32 @@ static void get_source_info_callback(pa_context *c, const pa_source_info *i, int
         mainloop_api->quit(mainloop_api, 1);
         return;
     }
-    if (!i->monitor_of_sink_name) {
-        return;
-    }
+    struct pulse_device_info *device;
 
-
-    struct pulse_monitors_info *monitor;
-    monitor = malloc(sizeof(struct pulse_monitors_info));
-
-    const char *name = i->name;
-    monitor->name = malloc((strlen(name) + 1) * sizeof(char*));
-    strcpy(monitor->name, name);
+    device = malloc(sizeof(struct pulse_device_info));
 
     char *device_name = (char*) pa_proplist_gets(i->proplist, "alsa.card_name");
     if (!device_name) {
-        device_name = (char*) i->monitor_of_sink_name;
+        device_name = (char*) i->name;
     }
-    monitor->device_name = malloc((strlen("Output: ") + strlen(device_name) + 1) * sizeof(char*));
-    strcpy(monitor->device_name, "Output: ");
-    strcat(monitor->device_name, device_name);
+    device->name = malloc((strlen(device_name) + 1) * sizeof(char*));
+    strcpy(device->name, device_name);
 
-    monitor->next = pulse_head;
-    pulse_head = monitor;
+    const char *name = i->name;
+    device->source_name = malloc((strlen(name) + 1) * sizeof(char*));
+    strcpy(device->source_name, name);
 
-    alloc_size.device_name += (strlen(monitor->device_name) + 1) * sizeof(char*);
-    alloc_size.pulse_monitor += (strlen(monitor->name) + 1) * sizeof(char*);
+    device->rate = i->sample_spec.rate;
+
+    if (i->monitor_of_sink_name) {
+        device->mode = PULSE_MONITOR;
+    }
+    else {
+        device->mode = PULSE_INPUT;
+    }
+
+    device->next = pulse_head;
+    pulse_head = device;
 }
 
 static void get_server_info_callback(pa_context *c, const pa_server_info *i, void *userdata) {
@@ -73,11 +61,9 @@ static void get_server_info_callback(pa_context *c, const pa_server_info *i, voi
     (void) userdata;
 
     char *sink = (char*) i->default_sink_name;
-    default_monitor = malloc((strlen(sink) + 9) * sizeof (char*));
+    default_monitor = malloc((strlen(sink) + strlen(".monitor") + 1) * sizeof (char*));
     strcpy(default_monitor, sink);
     strcat(default_monitor, ".monitor");
-
-    default_input = (char*) i->default_source_name;
 }
 
 static void context_state_callback(pa_context *c, void *userdata) {
@@ -90,8 +76,11 @@ static void context_state_callback(pa_context *c, void *userdata) {
 
 }
 
-static void get_pulse_info() {
+struct pulse_device_info *get_pulse_devices_info() {
+
     pa_mainloop *m = NULL;
+    pa_context *context = NULL;
+     pa_proplist *proplist = NULL;
     int ret = 1;
     char *server = NULL;
 
@@ -110,18 +99,87 @@ static void get_pulse_info() {
     pa_mainloop_free(m);
     pa_xfree(server);
     pa_proplist_free(proplist);
+
+    // Find default output device
+    struct pulse_device_info *temp_pulse_head;
+    temp_pulse_head = pulse_head;
+
+    while (temp_pulse_head != NULL) {
+        if (strcmp(default_monitor, temp_pulse_head->source_name) == 0)
+            temp_pulse_head->_default = 1;
+        else
+            temp_pulse_head->_default = 0;
+
+        temp_pulse_head = temp_pulse_head->next;
+    }
+
+    return pulse_head;
 }
+
+static void *init_audio_collection(void* data) {
+    recidia_audio_data *audio_data = data;
+
+    pa_sample_spec sample_spec;
+    sample_spec.format = PA_SAMPLE_S16LE;
+    sample_spec.rate = audio_data->pulse_device->rate;
+    sample_spec.channels = 2;
+
+    pa_buffer_attr buffer_attr;
+    buffer_attr.maxlength = -1;
+    buffer_attr.fragsize = 0;
+
+    int error;
+    pa_simple *simple = NULL;
+
+    simple = pa_simple_new( NULL,  // Default server
+                            "recidia_capture",
+                            PA_STREAM_RECORD,
+                            audio_data->pulse_device->source_name,
+                            "recidia_capture",
+                            &sample_spec,
+                            NULL, // No mapped channels
+                            &buffer_attr,
+                            &error
+                            );
+    if (!simple) {
+        fprintf(stderr, "pa_simple_new() failed: %s\n", pa_strerror(error));
+        exit(EXIT_FAILURE);
+    }
+
+    short buffer[2];
+    short sample;
+    while (1) {
+        // Read data
+        if (pa_simple_read(simple, &buffer, sizeof(buffer), &error) < 0) {
+            fprintf(stderr, ": pa_simple_read() failed: %s\n", pa_strerror(error));
+            exit(EXIT_FAILURE);
+        }
+
+        // Store data for processing
+        sample = (buffer[0] + buffer[1]) / 2; // Avg. of left [0] and right [1]
+        audio_data->samples[audio_data->frame_index] = sample;
+
+        audio_data->frame_index += 1;
+        if (audio_data->frame_index > *audio_data->buffer_size)
+            audio_data->frame_index = 0;
+    }
+}
+
+void pulse_collect_audio_data(recidia_audio_data *audio_data) {
+
+    pthread_t thread;
+    pthread_create(&thread, NULL, &init_audio_collection, audio_data);
+}
+#else
+struct pulse_device_info *get_pulse_devices_info() {return NULL;}
+void pulse_collect_audio_data(recidia_audio_data *audio_data) {return;}
 #endif
 
 
-struct port_device_info {
-    char *name;
-    int index;
-    struct port_device_info *next;
-};
+#ifdef PORTAUDIO
 struct port_device_info *port_head = NULL;
 
-static void get_port_info() {
+struct port_device_info *get_port_devices_info() {
     Pa_Initialize();
 
     int pa_device_num = Pa_GetDeviceCount();
@@ -135,80 +193,26 @@ static void get_port_info() {
             device = malloc(sizeof(struct port_device_info));
 
             char *device_name = (char*) device_info->name;
-            device->name = malloc((strlen("Input: ") + strlen(device_name) + 1) * sizeof(char*));
-            strcpy(device->name, "Input: ");
-            strcat(device->name, device_name);
+            device->name = malloc((strlen(device_name) + 1) * sizeof(char*));
+            strcpy(device->name, device_name);
 
             device->index = i;
+
+            device->rate = device_info->defaultSampleRate;
 
             device->next = port_head;
             port_head = device;
 
-            alloc_size.device_name += (strlen(device->name) + 1) * sizeof(char*);
-            alloc_size.port_index += sizeof(int*);
             p++;
         }
     }
 
     Pa_Terminate();
+
+    return port_head;
 }
 
-void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pulse_defaults, int **port_indexes) {
-
-#ifdef PULSE
-    get_pulse_info();
-#endif
-    get_port_info();
-
-    *device_names = malloc(alloc_size.device_name + sizeof(NULL));
-    int i = 0;
-
-#ifdef PULSE
-    *pulse_defaults = malloc((strlen(default_monitor) + strlen(default_input) + 1) * sizeof(char*));
-    (*pulse_defaults)[0] = default_monitor;
-    (*pulse_defaults)[1] = default_input;
-
-    *pulse_monitors = malloc(alloc_size.pulse_monitor + sizeof(NULL));
-
-    struct pulse_monitors_info *pulse_ptr;
-
-    while (pulse_head != NULL) {
-        pulse_ptr = pulse_head;
-
-        (*device_names)[i] = pulse_head->device_name;
-        (*pulse_monitors)[i] = pulse_head->name;
-        pulse_head = pulse_head->next;
-
-        free(pulse_ptr);
-        i++;
-    }
-    (*pulse_monitors)[i] = NULL; // End marker
-#endif
-
-    *port_indexes = malloc(alloc_size.port_index + sizeof(int*));
-
-    struct port_device_info *port_ptr;
-
-    int p = 0;
-    while (port_head != NULL) {
-        port_ptr = port_head;
-
-        (*device_names)[i] = port_head->name;
-        (*port_indexes)[p] = port_head->index;
-        port_head = port_head->next;
-
-        free(port_ptr);
-        i++;
-        p++;
-    }
-    (*port_indexes)[p] = -1; // End marker
-
-    (*device_names)[i] = NULL; // End marker
-
-    system("clear");
-}
-
-static int recordCallback( const void *inputBuffer, void *outputBuffer,
+static int port_record_callback( const void *inputBuffer, void *outputBuffer,
         unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo* timeInfo,
         PaStreamCallbackFlags statusFlags, void *userData ) {
 
@@ -217,7 +221,7 @@ static int recordCallback( const void *inputBuffer, void *outputBuffer,
     (void) timeInfo;
     (void) statusFlags;
 
-    struct pa_data *data = userData;
+    recidia_audio_data *data = userData;
 
     short *input = (short*) inputBuffer;
     data->samples[data->frame_index] = (input[0] + input[1]) / 2; // Avg. of left [0] and right [1]
@@ -232,20 +236,20 @@ static int recordCallback( const void *inputBuffer, void *outputBuffer,
     return 0;
 }
 
-void collect_audio_data(struct pa_data *audio_data, int device_index) {
-
+void port_collect_audio_data(recidia_audio_data *audio_data) {
+    // Prevent portaudio debug logs
+    fclose(stderr);
     Pa_Initialize();
+    freopen("/dev/tty", "w", stderr);
 
-    const PaDeviceInfo* device = Pa_GetDeviceInfo(device_index);
+    const PaDeviceInfo* device = Pa_GetDeviceInfo(audio_data->port_device->index);
 
     PaStreamParameters input_parameters;
-    input_parameters.device = device_index;
+    input_parameters.device = audio_data->port_device->index;
     input_parameters.channelCount = 2;
     input_parameters.sampleFormat = paInt16;
     input_parameters.suggestedLatency = device->defaultLowInputLatency;
     input_parameters.hostApiSpecificStreamInfo = NULL;
-
-    audio_data->sample_rate = device->defaultSampleRate;
 
     PaStream *stream;
     Pa_OpenStream(
@@ -255,97 +259,12 @@ void collect_audio_data(struct pa_data *audio_data, int device_index) {
         audio_data->sample_rate,
         1,
         paNoFlag,
-        recordCallback,
+        port_record_callback,
         audio_data );
 
     Pa_StartStream(stream);
-
 }
-
-// Check/Clean lines for an old "pcm.revidia_capture" device
-void clean_asound() {
-
-    char *home_dir = getenv("HOME");
-    char *asound_file_path = malloc((strlen(home_dir) + strlen("/.asoundrc") + 1) * sizeof(char*));
-    strcpy(asound_file_path, home_dir);
-    strcat(asound_file_path, "/.asoundrc");
-
-    FILE *asound_file;
-    FILE *temp;
-
-    asound_file = fopen(asound_file_path, "a+");
-
-    temp = fopen("asoundtemp", "w+");
-
-    char line[128];
-
-    int skip = 0;
-    while (fgets(line, sizeof(line), asound_file)) {
-        if (!skip) {
-            if (strcmp(line, "pcm.recidia_capture {\n") == 0) {
-                skip = 1;
-            }
-            else {
-                fprintf(temp, "%s", line);
-            }
-        }
-        else {
-            if (strcmp(line, "}\n") == 0) {
-                skip = 0;
-            }
-        }
-    }
-    fclose(temp);
-    fclose(asound_file);
-    // Overwrite .asoundrc
-    rename("asoundtemp", asound_file_path);
-
-    free(asound_file_path);
-}
-
-int pulse_monitor_to_port_index(const char *pulse_monitor) {
-
-    clean_asound();
-
-    char *home_dir = getenv("HOME");
-    char *asound_file_path = malloc((strlen(home_dir) + strlen("/.asoundrc") + 1) * sizeof(char*));
-    strcpy(asound_file_path, home_dir);
-    strcat(asound_file_path, "/.asoundrc");
-
-    FILE *asound_file;
-
-    // Create ALSA device to connect to PulseAudio
-    asound_file = fopen(asound_file_path, "a");
-
-    char *recidiaAlsaDevice = malloc((strlen(pulse_monitor) + 50) * sizeof(char*));
-    strcpy(recidiaAlsaDevice,   "pcm.recidia_capture {\n"
-                                "\ttype pulse\n"
-                                "\tdevice ");
-    strcat(recidiaAlsaDevice, pulse_monitor);
-    strcat(recidiaAlsaDevice, "\n}");
-
-    fputs(recidiaAlsaDevice, asound_file);
-
-    fclose(asound_file);
-
-    // Get portaudio device index
-    Pa_Initialize();
-    uint portDeviceIndex = 0;
-
-    uint paDeviceNum = Pa_GetDeviceCount();
-    for(uint i=0; i < paDeviceNum; i++) {
-        const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(i);
-        char *paDeviceName = (char*) deviceInfo->name;
-        if (strcmp(paDeviceName, "recidia_capture") == 0) {
-            portDeviceIndex = i;
-            break;
-        }
-    }
-
-    Pa_Terminate();
-
-    free(asound_file_path);
-    free(recidiaAlsaDevice);
-
-    return portDeviceIndex;
-}
+#else
+struct port_device_info *get_port_devices_info() {return NULL;}
+void port_collect_audio_data(recidia_audio_data *audio_data) {return;}
+#endif

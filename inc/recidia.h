@@ -1,24 +1,43 @@
 #ifndef RECIDIA_H 
 #define RECIDIA_H
 
-#include <fftw3.h>
-#include <gsl/gsl_blas.h>
+const int PULSE_INPUT = 0;
+const int  PULSE_MONITOR = 1;
+struct pulse_device_info {
+    char *name;
+    char *source_name;
+    int rate;
+    int mode;
+    int _default;
+    struct pulse_device_info *next;
+};
 
-typedef struct pa_data {
+struct port_device_info {
+    char *name;
+    int index;
+    int rate;
+    struct port_device_info *next;
+};
+
+typedef struct recidia_audio_data {
     unsigned int frame_index;
     unsigned int *buffer_size;
     unsigned int sample_rate;
+    struct pulse_device_info *pulse_device;
+    struct port_device_info *port_device;
     short *samples;
-} pa_data;
+} recidia_audio_data;
 
 // C code
 #ifdef __cplusplus
 extern "C" {
-    void get_audio_devices(char ***device_names, char ***pulse_monitors, char ***pulse_defaults, int **pa_indexes);
-
-    void collect_audio_data(struct pa_data *audio_data, int device_index);
+    struct pulse_device_info *get_pulse_devices_info();
     
-    int pulse_monitor_to_port_index(const char *pulse_monitor);
+    struct port_device_info *get_port_devices_info();
+    
+    void pulse_collect_audio_data(recidia_audio_data *audio_data);
+
+    void port_collect_audio_data(recidia_audio_data *audio_data);
 }
 #endif
 
@@ -54,6 +73,6 @@ void get_settings(recidia_setings *settings);
 
 void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sync);
 
-void init_processing(recidia_setings *settings, recidia_data *plot_data, pa_data *audio_data, recidia_sync *sync);
+void init_processing(recidia_setings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync);
 
 #endif

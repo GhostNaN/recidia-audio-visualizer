@@ -12,7 +12,7 @@
 
 using namespace std;
 
-static void create_chart_table(uint chart_size, uint *chart_table, recidia_setings *settings, pa_data *audio_data) {
+static void create_chart_table(uint chart_size, uint *chart_table, recidia_setings *settings, recidia_audio_data *audio_data) {
 
     uint i, j;
 
@@ -187,7 +187,7 @@ static void get_savgol_coeffs(vector<float> *in, int window_size, int poly_order
 //[[ 1 -2  4 -8] [ 1 -1  1 -1] [ 1  0  0  0] [ 1  1  1  1] [ 1  2  4  8]]
 // [-0.08571429  0.34285714  0.48571429  0.34285714 -0.08571429]
 
-void init_processing(recidia_setings *settings, recidia_data *plot_data, pa_data *audio_data, recidia_sync *sync) {
+void init_processing(recidia_setings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync) {
     // Allocate Default Vars
     uint i, j;
     uint interpIndex = 0;
