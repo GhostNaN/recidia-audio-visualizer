@@ -26,10 +26,12 @@ The Bad:
   - Teminal display
 - libconfig
   - Config file manager
-- portaudio
+  
+#### Must have at least one:
+- portaudio(optional)
   - Audio data collection (Input Only)
 - pulseaudio(optional)
-  - Grab output audio from pulseaudio using ALSA
+  - Audio data collection
 
 ## Installers
 ### Arch:
