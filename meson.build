@@ -11,7 +11,7 @@ audio_check = false
 
 pulse = dependency('libpulse', required : false)
 pulse_simple = dependency('libpulse-simple', required : false)
-if pulse.found()
+if pulse.found() and pulse_simple.found()
     add_project_arguments('-D PULSEAUDIO', language : 'c')
     audio_check = true
 endif
@@ -22,7 +22,7 @@ if portaudio.found()
     audio_check = true
 endif
 
-assert(audio_check, 'You need PulseAudio or/and PortAudio')
+assert(audio_check, 'You need PulseAudio and/or PortAudio')
 
 #add_project_arguments('-D_FORTIFY_SOURCE=2', '-O2', language : 'cpp')
 
