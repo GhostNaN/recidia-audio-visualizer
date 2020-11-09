@@ -12,20 +12,20 @@
 
 using namespace std;
 
-static void create_chart_table(uint chart_size, uint *chart_table, recidia_setings *settings, recidia_audio_data *audio_data) {
+static void create_chart_table(uint chart_size, uint *chart_table, recidia_settings *settings, recidia_audio_data *audio_data) {
 
     uint i, j;
 
     float beizerTable[chart_size];
 
-    float plotFreq = (float) audio_data->sample_rate / (float) settings->audio_buffer_size;
+    float plotFreq = (float) audio_data->sample_rate / (float) settings->data.audio_buffer_size;
 
-    float startPoint = settings->chart_guide[0] / plotFreq;
-    float startCtrl = startPoint * settings->chart_guide[1];
-    float midPoint = settings->chart_guide[2] / plotFreq;
-    uint midPointPos = round(chart_size * settings->chart_guide[3]);
-    float midCtrl = midPoint * settings->chart_guide[4];
-    float endPoint = settings->chart_guide[5] / plotFreq;
+    float startPoint = settings->data.chart_guide.start_freq / plotFreq;
+    float startCtrl = startPoint * settings->data.chart_guide.start_ctrl;
+    float midPoint = settings->data.chart_guide.mid_freq / plotFreq;
+    uint midPointPos = round(chart_size * settings->data.chart_guide.mid_pos);
+    float midCtrl = midPoint * settings->data.chart_guide.end_ctrl;
+    float endPoint = settings->data.chart_guide.end_freq / plotFreq;
 
     uint samples;
     float p0, p2, c, n;
@@ -55,7 +55,7 @@ static void create_chart_table(uint chart_size, uint *chart_table, recidia_setin
     }
 
     float stepSize = 1;
-    float limit = settings->audio_buffer_size / 2;
+    float limit = settings->data.audio_buffer_size / 2;
     float prevStep;
     float nextStep = beizerTable[0];
     chart_table[0] = (uint) beizerTable[0];
@@ -187,53 +187,53 @@ static void get_savgol_coeffs(vector<float> *in, int window_size, int poly_order
 //[[ 1 -2  4 -8] [ 1 -1  1 -1] [ 1  0  0  0] [ 1  1  1  1] [ 1  2  4  8]]
 // [-0.08571429  0.34285714  0.48571429  0.34285714 -0.08571429]
 
-void init_processing(recidia_setings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync) {
+void init_processing(recidia_settings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync) {
     // Allocate Default Vars
     uint i, j;
     uint interpIndex = 0;
 
-    uint audioBufferSize = settings->audio_buffer_size;
-    uint interp = settings->interp;
-    uint plotsCount = plot_data->width / (settings->plot_width + settings->gap_width);
-    uint savgolWindowSize = settings->savgol_filter[0];
+    uint audioBufferSize = settings->data.audio_buffer_size;
+    uint interp = settings->data.interp;
+    uint plotsCount = plot_data->width / (settings->design.plot_width + settings->design.gap_width);
+    uint savgolWindowSize = settings->data.savgol_filter.window_size;
 
-    double *fftIn = (double*) fftw_malloc(sizeof(double) * settings->MAX_AUDIO_BUFFER_SIZE);
-    double *fftOut = (double*) fftw_malloc(sizeof(double) * settings->MAX_AUDIO_BUFFER_SIZE);
+    double *fftIn = (double*) fftw_malloc(sizeof(double) * settings->data.AUDIO_BUFFER_SIZE.MAX);
+    double *fftOut = (double*) fftw_malloc(sizeof(double) * settings->data.AUDIO_BUFFER_SIZE.MAX);
     fftw_plan fftPlan = fftw_plan_r2r_1d(audioBufferSize, fftIn, fftOut, FFTW_R2HC, FFTW_MEASURE);
 
-    float interpArray[settings->MAX_INTEROPLATION][settings->MAX_AUDIO_BUFFER_SIZE/2];
-    float proArray[settings->MAX_AUDIO_BUFFER_SIZE/2];
-    uint chartTable[settings->MAX_AUDIO_BUFFER_SIZE/2];
+    float interpArray[settings->data.INTERP.MAX][settings->data.AUDIO_BUFFER_SIZE.MAX/2];
+    float proArray[settings->data.AUDIO_BUFFER_SIZE.MAX/2];
+    uint chartTable[settings->data.AUDIO_BUFFER_SIZE.MAX/2];
     vector<float> pinvVector;
 
     create_chart_table(plotsCount, chartTable, settings, audio_data);
-    if (settings->savgol_filter[0] > settings->savgol_filter[1] + 1)
-        get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->savgol_filter[1]);
+    if (settings->data.savgol_filter.window_size > settings->data.savgol_filter.poly_order + 1)
+        get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->data.savgol_filter.poly_order);
 
     while (1) {
         // Handling volatile vars
-        if (audioBufferSize != settings->audio_buffer_size) {
-            audioBufferSize = settings->audio_buffer_size;
+        if (audioBufferSize != settings->data.audio_buffer_size) {
+            audioBufferSize = settings->data.audio_buffer_size;
 
             fftw_destroy_plan(fftPlan);
             fftPlan = fftw_plan_r2r_1d(audioBufferSize, fftIn, fftOut, FFTW_R2HC, FFTW_MEASURE);
             create_chart_table(plotsCount, chartTable, settings, audio_data);
         }
-        if (interp != settings->interp) {
-            interp = settings->interp;
+        if (interp != settings->data.interp) {
+            interp = settings->data.interp;
 
             interpIndex = 0;
         }
-        if (plotsCount != plot_data->width / (settings->plot_width + settings->gap_width)) {
-            plotsCount = plot_data->width / (settings->plot_width + settings->gap_width);
+        if (plotsCount != plot_data->width / (settings->design.plot_width + settings->design.gap_width)) {
+            plotsCount = plot_data->width / (settings->design.plot_width + settings->design.gap_width);
 
             create_chart_table(plotsCount, chartTable, settings, audio_data);
         }
-        if (savgolWindowSize != settings->savgol_filter[0]) {
-            savgolWindowSize = settings->savgol_filter[0];
+        if (savgolWindowSize != settings->data.savgol_filter.window_size) {
+            savgolWindowSize = settings->data.savgol_filter.window_size;
 
-            if (settings->savgol_filter[0] > settings->savgol_filter[1] + 1)
-                get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->savgol_filter[1]);
+            if (settings->data.savgol_filter.window_size > settings->data.savgol_filter.poly_order + 1)
+                get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->data.savgol_filter.poly_order);
         }
 
         // Convert samples to double for FFTW
@@ -266,7 +266,7 @@ void init_processing(recidia_setings *settings, recidia_data *plot_data, recidia
         }
 
         // Savitzky Golay Filter
-        if (savgolWindowSize > settings->savgol_filter[1] + 1) {
+        if (savgolWindowSize > settings->data.savgol_filter.poly_order + 1) {
             // Correct windowSize if needed as it must be a positive odd number
             int windowSize = savgolWindowSize;
             if (windowSize > (int) plotsCount)

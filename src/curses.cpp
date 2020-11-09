@@ -10,142 +10,9 @@
 
 using namespace std;
 
-const char PLOT_HEIGHT_CAP_DECREASE = 't';
-const char PLOT_HEIGHT_CAP_INCREASE = 'g';
-
-const char PLOT_WIDTH_DECREASE = 'e';
-const char PLOT_WIDTH_INCREASE = 'r';
-
-const char GAP_WIDTH_DECREASE = 'd';
-const char GAP_WIDTH_INCREASE = 'f';
-
-const char SAVGOL_WINDOW_SIZE_DECREASE = 'q';
-const char SAVGOL_WINDOW_SIZE_INCREASE = 'w';
-
-const char INTERPOLATION_DECREASE = 'a';
-const char INTERPOLATION_INCREASE = 's';
-
-const char AUDIO_BUFFER_SIZE_DECREASE = 'z';
-const char AUDIO_BUFFER_SIZE_INCREASE = 'x';
-
-const char FPS_DECREASE = 'h';
-const char FPS_INCREASE = 'y';
-
-const char STATS_TOGGLE = 'i';
 
 
-static void grab_input(recidia_setings *settings, uint plots_count) {
-    // Get input
-    int ch = getch();
-
-    if (ch != -1) {
-        switch (ch) {
-            case KEY_MOUSE:
-                MEVENT mouseEvent;
-
-                if(getmouse(&mouseEvent) == OK) {
-                    if (mouseEvent.bstate & BUTTON4_PRESSED) { // Scroll Up
-                        if (settings->plot_height_cap > 1) {
-                            settings->plot_height_cap /= 1.25;
-
-                            if (settings->plot_height_cap < 1)
-                                settings->plot_height_cap = 1;
-                        }
-                    }
-                    else if (mouseEvent.bstate & BUTTON5_PRESSED) {  // Scroll Down
-                        if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP) {
-                            settings->plot_height_cap *= 1.25;
-
-                            if (settings->plot_height_cap > settings->MAX_PLOT_HEIGHT_CAP)
-                                settings->plot_height_cap = settings->MAX_PLOT_HEIGHT_CAP;
-                        }
-                    }
-                }
-                break;
-
-            case PLOT_HEIGHT_CAP_DECREASE:
-                if (settings->plot_height_cap > 1) {
-                    settings->plot_height_cap /= 1.5;
-
-                    if (settings->plot_height_cap < 1)
-                        settings->plot_height_cap = 1;
-                }
-                break;
-            case PLOT_HEIGHT_CAP_INCREASE:
-                if (settings->plot_height_cap < settings->MAX_PLOT_HEIGHT_CAP) {
-                    settings->plot_height_cap *= 1.5;
-
-                    if (settings->plot_height_cap > settings->MAX_PLOT_HEIGHT_CAP)
-                        settings->plot_height_cap = settings->MAX_PLOT_HEIGHT_CAP;
-                }
-                break;
-
-            case PLOT_WIDTH_DECREASE:
-                if (settings->plot_width > 1)
-                    settings->plot_width -= 1;
-                break;
-            case PLOT_WIDTH_INCREASE:
-                if (settings->plot_width < settings->MAX_PLOT_WIDTH)
-                    settings->plot_width += 1;
-                break;
-
-            case GAP_WIDTH_DECREASE:
-                if (settings->gap_width > 0)
-                    settings->gap_width -= 1;
-                break;
-            case GAP_WIDTH_INCREASE:
-                if (settings->gap_width < settings->MAX_GAP_WIDTH)
-                    settings->gap_width += 1;
-                break;
-
-            case SAVGOL_WINDOW_SIZE_DECREASE:
-                if (settings->savgol_filter[0] > 0)
-                    settings->savgol_filter[0] -= 1;
-                break;
-            case SAVGOL_WINDOW_SIZE_INCREASE:
-                if (settings->savgol_filter[0] < plots_count)
-                    settings->savgol_filter[0] += 1;
-                break;
-
-            case INTERPOLATION_DECREASE:
-                if (settings->interp > 0)
-                    settings->interp -= 1;
-                break;
-            case INTERPOLATION_INCREASE:
-                if (settings->interp < settings->MAX_INTEROPLATION)
-                    settings->interp += 1;
-                break;
-
-            case AUDIO_BUFFER_SIZE_DECREASE:
-                if (settings->audio_buffer_size > 1024)
-                    settings->audio_buffer_size /= 2;
-                break;
-            case AUDIO_BUFFER_SIZE_INCREASE:
-                if (settings->audio_buffer_size < settings->MAX_AUDIO_BUFFER_SIZE)
-                    settings->audio_buffer_size *= 2;
-                break;
-
-            case FPS_DECREASE:
-                if (settings->fps > 1)
-                    settings->fps -= 1;
-                break;
-            case FPS_INCREASE:
-                if (settings->fps < settings->MAX_FPS)
-                    settings->fps += 1;
-                break;
-
-            case STATS_TOGGLE:
-                if (settings->stats)
-                    settings->stats = 0;
-                else
-                   settings->stats = 1;
-                break;
-        }
-    }
-
-}
-
-void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sync) {
+void init_curses(recidia_settings *settings, recidia_data *data, recidia_sync *sync) {
     setlocale(LC_ALL, "");
     initscr();
     noecho();
@@ -158,21 +25,21 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
     // Initialize vars
     uint i, j;
     uint ceiling;
-    uint finalPlots[settings->MAX_AUDIO_BUFFER_SIZE/2];
+    uint finalPlots[settings->data.AUDIO_BUFFER_SIZE.MAX / 2];
     uint frameCount = 0;
     float realfps = 0;
     double latency = 0;
     uint slices = 8;    // How many pieces/slices of a char block is shown
 
     // Used to show settings changes
-    double plotHeightCap = settings->plot_height_cap;
-    uint plotWidth = settings->plot_width;
-    uint gapWidth = settings->gap_width;
-    uint savgolWindowSize = settings->savgol_filter[0];
-    uint interp = settings->interp;
-    uint audioBufferSize = settings->audio_buffer_size;
+    double plotHeightCap = settings->data.height_cap;
+    uint plotWidth = settings->design.plot_width;
+    uint gapWidth = settings->design.gap_width;
+    uint savgolWindowSize = settings->data.savgol_filter.window_size;
+    uint interp = settings->data.interp;
+    uint audioBufferSize = settings->data.audio_buffer_size;
     uint plotsCount = data->width / (plotWidth + gapWidth);
-    uint fps = settings->fps;
+    uint fps = settings->misc.fps;
 
     string settingToDisplay;
     uint timeOfDisplayed = 0;
@@ -182,8 +49,8 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
         getmaxyx(stdscr, data->height, data->width);
 
         // Track setting changes
-        if (plotHeightCap != settings->plot_height_cap) {
-            plotHeightCap = settings->plot_height_cap;
+        if (plotHeightCap != settings->data.height_cap) {
+            plotHeightCap = settings->data.height_cap;
 
             float db  = 20 * log10(plotHeightCap / 32768);
             char dbCharArrayt[10];
@@ -193,42 +60,42 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
             timeOfDisplayed = 0;
             settingToDisplay = "Volume Cap " + dbString + "db";
         }
-        if (plotWidth != settings->plot_width) {
-            plotWidth = settings->plot_width;
+        if (plotWidth != settings->design.plot_width) {
+            plotWidth = settings->design.plot_width;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Plot Width " + to_string(plotWidth);
 
             clear();
         }
-        if (gapWidth != settings->gap_width) {
-            gapWidth = settings->gap_width;
+        if (gapWidth != settings->design.gap_width) {
+            gapWidth = settings->design.gap_width;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Gap Width " + to_string(gapWidth);
 
             clear();
         }
-        if (savgolWindowSize != settings->savgol_filter[0]) {
-            savgolWindowSize = settings->savgol_filter[0];
+        if (savgolWindowSize != settings->data.savgol_filter.window_size) {
+            savgolWindowSize = settings->data.savgol_filter.window_size;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Savgol Window Size " + to_string(savgolWindowSize);
         }
-        if (interp != settings->interp) {
-            interp = settings->interp;
+        if (interp != settings->data.interp) {
+            interp = settings->data.interp;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Interpolation " + to_string(interp) + "x";
         }
-        if (audioBufferSize != settings->audio_buffer_size) {
-            audioBufferSize = settings->audio_buffer_size;
+        if (audioBufferSize != settings->data.audio_buffer_size) {
+            audioBufferSize = settings->data.audio_buffer_size;
 
             timeOfDisplayed = 0;
             settingToDisplay = "Audio Buffer Size " + to_string(audioBufferSize);
         }
-        if (fps != settings->fps) {
-            fps = settings->fps;
+        if (fps != settings->misc.fps) {
+            fps = settings->misc.fps;
 
             timeOfDisplayed = 0;
             settingToDisplay = "FPS " + to_string(fps);
@@ -245,7 +112,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
         for (i=0; i < plotsCount; i++ ) {
 
             // Scale plots
-            finalPlots[i] = data->plots[i] * ((float) ceiling / plotHeightCap);
+            finalPlots[i] = (data->plots[i] / plotHeightCap) * (float) ceiling;
             if (finalPlots[i] > ceiling) {
                 finalPlots[i] = ceiling;
             }
@@ -289,7 +156,7 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
 
         // Show changes in settings on scrren
         if (settingToDisplay.compare("") != 0) {
-            if (frameCount % (settings->fps / 1) == 0) {
+            if (frameCount % (settings->misc.fps / 1) == 0) {
                 timeOfDisplayed += 1;
             }
             if (timeOfDisplayed < SECONDS_TO_DISPLAY) {
@@ -302,8 +169,8 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
         }
 
         // Draw stats
-        if (settings->stats) {
-            if (frameCount % (settings->fps / 10) == 0) { // Slow down stats
+        if (settings->misc.stats) {
+            if (frameCount % (settings->misc.fps / 10) == 0) { // Slow down stats
                 auto latencyChrono = chrono::high_resolution_clock::now();
                 latency = chrono::duration<double>(latencyChrono.time_since_epoch()).count();
                 latency = (latency - data->time) * 1000;
@@ -328,7 +195,34 @@ void init_curses(recidia_setings *settings, recidia_data *data, recidia_sync *sy
         while (sync->status) {
             usleep(1000);
 
-            grab_input(settings, plotsCount);
+            // Get input
+            int ch = getch();
+            // Convert Mouse events to key
+            if (ch == KEY_MOUSE) {
+                MEVENT mouseEvent;
+
+                if(getmouse(&mouseEvent) == OK) {
+                    if (mouseEvent.bstate & BUTTON4_PRESSED) { // Scroll Up
+                        if (settings->data.height_cap > 1) {
+                            settings->data.height_cap /= 1.25;
+
+                            if (settings->data.height_cap < 1)
+                                settings->data.height_cap = 1;
+                        }
+                    }
+                    else if (mouseEvent.bstate & BUTTON5_PRESSED) {  // Scroll Down
+                        if (settings->data.height_cap < settings->data.HEIGHT_CAP.MAX) {
+                            settings->data.height_cap *= 1.25;
+
+                            if (settings->data.height_cap > settings->data.HEIGHT_CAP.MAX)
+                                settings->data.height_cap = settings->data.HEIGHT_CAP.MAX;
+                        }
+                    }
+                }
+            }
+            else {
+                change_setting_by_key(settings, ch);
+            }
         }
     }
 }

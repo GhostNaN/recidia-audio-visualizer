@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <recidia.h>
+#include <qt_window.h>
 
 using namespace std;
 
@@ -64,13 +65,15 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 
     // Get device index
     uint deviceIndex = 0;
+    int d = 0;
+    if (pulseIndexes.size()) {
+        d = 1; // d as in default
+    }
     if (!GUI) {
         system("clear");
 
-        i = 0;
-        int d = 0;
+        i = 0;  
         if (pulseHead) {
-            d = 1; // d as in default
             printf("|||PulseAudio Devices|||\n");
             printf("[0] Default Output\n");
             for(i=0; i < pulseIndexes.size(); i++) {
@@ -92,17 +95,21 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         fgets(devBuffer, 4, stdin);
 
         deviceIndex = atoi(devBuffer); // If fail = 0 aka default pulse
-        if (deviceIndex == 0)
-            deviceIndex = pulseDefaultIndex;
-        else {
-            // Subtract to account for default device being 0
-            deviceIndex -= d;
-        }
+    }
+    else {
+        deviceIndex = display_audio_devices(deviceNames, pulseIndexes, portIndexes);
+    }
 
-        if (deviceIndex >= pulseIndexes.size() + portIndexes.size()) {
-            fprintf(stderr, "Error: Bad device index\n");
-            exit(EXIT_FAILURE);
-        }
+    if (deviceIndex == 0)
+        deviceIndex = pulseDefaultIndex;
+    else {
+        // Subtract to account for default device being 0
+        deviceIndex -= d;
+    }
+
+    if (deviceIndex >= pulseIndexes.size() + portIndexes.size()) {
+        fprintf(stderr, "Error: Bad device index\n");
+        exit(EXIT_FAILURE);
     }
 
 
@@ -149,18 +156,18 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 
 int main(int argc, char **argv) {
     (void) argv;
-    // GUI if any arg else it's terminal
+    // GUI if any arg, else it's terminal
     int GUI = argc-1;
 
     // Get settings
-    recidia_setings settings;
-    get_settings(&settings);
+    recidia_settings settings;
+    get_settings(&settings, GUI);    
 
     // Init Audio Collection
     recidia_audio_data audioData;
     audioData.frame_index = 0;
-    audioData.buffer_size = &settings.audio_buffer_size;
-    audioData.samples = (short*) calloc(settings.MAX_AUDIO_BUFFER_SIZE, sizeof(short));
+    audioData.buffer_size = &settings.data.audio_buffer_size;
+    audioData.samples = (short*) calloc(settings.data.AUDIO_BUFFER_SIZE.MAX, sizeof(short));
 
     get_audio_device(&audioData, GUI);
 
@@ -170,7 +177,7 @@ int main(int argc, char **argv) {
     data.height = 10;
     data.time = 0;
     data.frame_time = 0;
-    data.plots = (float*) calloc(settings.MAX_AUDIO_BUFFER_SIZE/2, sizeof(float));
+    data.plots = (float*) calloc(settings.data.AUDIO_BUFFER_SIZE.MAX / 2, sizeof(float));
 
     // Init processing
     recidia_sync proSync;
@@ -179,12 +186,21 @@ int main(int argc, char **argv) {
     proSync.outbound = 0;
     thread proThread(init_processing, &settings, &data, &audioData, &proSync);
 
+
     // Init curses
     recidia_sync cursesSync;
     cursesSync.status = 0;
     cursesSync.inbound = 0;
     cursesSync.outbound = 0;
-    thread cursesThread(init_curses, &settings, &data, &cursesSync);
+    if (!GUI) {
+        thread cursesThread(init_curses, &settings, &data, &cursesSync);
+        cursesThread.detach();
+    }
+
+    if (GUI) {
+        thread guiThread(init_gui, argc, argv, &data, &settings);
+        guiThread.detach();
+    }
 
     // Main Loop
     while(1) {
@@ -193,14 +209,16 @@ int main(int argc, char **argv) {
         // Fake multithreading for now for lower latency, but worse performance.
         proSync.status = 0;
         while (!proSync.status) { usleep(1000); }
-        cursesSync.status = 0;
-        while (!cursesSync.status) { usleep(1000); }
+        if (!GUI) {
+            cursesSync.status = 0;
+            while (!cursesSync.status) { usleep(1000); }
+        }
 
         // Global timer
         chrono::duration<double> timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
         double latency = timerEnd.count();
 
-        int sleepTime = ((1000 / (double) settings.fps) - latency) * 1000;
+        int sleepTime = ((1000 / (double) settings.misc.fps) - latency) * 1000;
         if (sleepTime > 0)
             usleep(sleepTime);
 
