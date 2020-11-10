@@ -9,6 +9,30 @@
 
 using namespace std;
 
+static void init_main_loop(recidia_settings *settings, recidia_data *data, recidia_sync *proSync, recidia_sync *cursesSync) {
+    while(1) {
+        auto timerStart = chrono::high_resolution_clock::now();
+
+        proSync->status = 0;
+        while (!proSync->status) { usleep(1000); }
+        if (cursesSync) {
+            cursesSync->status = 0;
+            while (!cursesSync->status) { usleep(1000); }
+        }
+
+        // Global timer
+        chrono::duration<double> timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
+        double latency = timerEnd.count();
+
+        int sleepTime = ((1000 / (double) settings->misc.fps) - latency) * 1000;
+        if (sleepTime > 0)
+            usleep(sleepTime);
+
+        timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
+        data->frame_time = timerEnd.count();
+    }
+}
+
 void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     uint i, j;
 
@@ -186,44 +210,20 @@ int main(int argc, char **argv) {
     proSync.outbound = 0;
     thread proThread(init_processing, &settings, &data, &audioData, &proSync);
 
-
     // Init curses
     recidia_sync cursesSync;
     cursesSync.status = 0;
     cursesSync.inbound = 0;
     cursesSync.outbound = 0;
-    if (!GUI) {
-        thread cursesThread(init_curses, &settings, &data, &cursesSync);
-        cursesThread.detach();
-    }
 
     if (GUI) {
-        thread guiThread(init_gui, argc, argv, &data, &settings);
-        guiThread.detach();
+        thread loopThread(init_main_loop, &settings, &data, &proSync, nullptr);
+        init_gui(argc, argv, &data, &settings);
+    }
+    else {
+        thread loopThread(init_main_loop, &settings, &data, &proSync, &cursesSync);
+        init_curses(&settings, &data, &cursesSync);
     }
 
-    // Main Loop
-    while(1) {
-        auto timerStart = chrono::high_resolution_clock::now();
-
-        // Fake multithreading for now for lower latency, but worse performance.
-        proSync.status = 0;
-        while (!proSync.status) { usleep(1000); }
-        if (!GUI) {
-            cursesSync.status = 0;
-            while (!cursesSync.status) { usleep(1000); }
-        }
-
-        // Global timer
-        chrono::duration<double> timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
-        double latency = timerEnd.count();
-
-        int sleepTime = ((1000 / (double) settings.misc.fps) - latency) * 1000;
-        if (sleepTime > 0)
-            usleep(sleepTime);
-
-        timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
-        data.frame_time = timerEnd.count();
-    }
     return 0;
 }

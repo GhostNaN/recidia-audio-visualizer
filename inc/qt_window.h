@@ -20,10 +20,6 @@ public:
     recidia_settings *settings;  
     
     QVulkanWindowRenderer *createRenderer() override;
-    
-protected:
-    void wheelEvent(QWheelEvent *event) override;
-
 };
 
 
@@ -69,8 +65,11 @@ public:
     explicit MainWindow(VulkanWindow *w);
     
 protected:
-    void showEvent(QShowEvent *event);
-    void resizeEvent(QResizeEvent *event);
-    void keyPressEvent(QKeyEvent *event);
-    void closeEvent(QCloseEvent *event);
+    bool eventFilter(QObject *obj, QEvent *event) override;
+    
+    void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 };

@@ -21,10 +21,35 @@ MainWindow::MainWindow(VulkanWindow *vulkan_window) {
     this->setAttribute(Qt::WA_TranslucentBackground);
 
     QWidget *wrapper = QWidget::createWindowContainer(vulkan_window);
+//    wrapper->installEventFilter(this);
+    vulkan_window->installEventFilter(this);
+
     this->setCentralWidget(wrapper);
 }
 
-void VulkanWindow::wheelEvent(QWheelEvent *event) {
+bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
+    if (event->type() == QEvent::Wheel) {
+        QCoreApplication::sendEvent(this, event);
+        return true;
+    }
+    else if (event->type() == QEvent::KeyPress) {
+        QCoreApplication::sendEvent(this, event);
+        return true;
+    }
+    return false;
+}
+
+void MainWindow::showEvent(QShowEvent *event) {
+    (void) event;
+    this->centralWidget()->resize(1000, 501);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event) {
+    plot_data->width = event->size().width();
+    plot_data->height = event->size().height();
+}
+
+void MainWindow::wheelEvent(QWheelEvent *event) {
     int mouseDir = event->angleDelta().y();
 
     if (mouseDir > 0) {
@@ -43,16 +68,6 @@ void VulkanWindow::wheelEvent(QWheelEvent *event) {
                 settings->data.height_cap = settings->data.HEIGHT_CAP.MAX;
         }
     }
-}
-
-void MainWindow::showEvent(QShowEvent *event) {
-    (void) event;
-    this->centralWidget()->resize(1000, 501);
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event) {
-    plot_data->width = event->size().width();
-    plot_data->height = event->size().height();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event) {
