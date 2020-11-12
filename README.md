@@ -13,7 +13,6 @@ The Good:
 - Proper config file "settings.cfg"
 
 The Bad:
-- Terminal ONLY, no GUI yet...
 - Missing cool features
 - No Windows support
 
@@ -54,6 +53,24 @@ ninja -C build install
 mkdir ~/.config/recidia/
 cp settings.cfg ~/.config/recidia/
 ```
+
+## Usage 
+### Running
+Terminal version:
+```
+recidia
+```
+GUI version:
+```
+recidia literally any arg
+```
+
+### Customizing
+Use the [settings.cfg](/settings.cfg) file to set: 
+- default behavior 
+- boundaries min/max
+- keybindings/controls for runtime changes
+
 
  ## License
 This project is licensed under the GPLv3 License - see the [LICENSE](/LICENSE) file for details
