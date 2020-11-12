@@ -59,6 +59,7 @@ std::vector<uint16_t> BAR_INDICES = {
 
 static uint VERTEX_BUFFER_SIZE = sizeof(Vertex) * 4;
 static uint INDEX_BUFFER_SIZE = sizeof(uint32_t) * 6;
+static bool BUFFERS_SIZE_FINALIZED = false;
 
 
 QVulkanWindowRenderer *VulkanWindow::createRenderer() {
@@ -67,8 +68,11 @@ QVulkanWindowRenderer *VulkanWindow::createRenderer() {
     renderer->settings = this->settings;
 
     // Set "const" buffer sizes
-    VERTEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
-    INDEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
+    if (!BUFFERS_SIZE_FINALIZED) {
+        VERTEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
+        INDEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
+    BUFFERS_SIZE_FINALIZED = true;
+    }
 
     return renderer;
 }
@@ -260,7 +264,7 @@ void VulkanRenderer::initResources() {
 
     pipelineInfo.layout = m_pipelineLayout;
 
-    // Render Pass
+    // Render Pass template fo later
 //    VkAttachmentDescription colorAttachment{};
 
 //    colorAttachment.format = vulkan_window->colorFormat();
@@ -303,6 +307,7 @@ void VulkanRenderer::initResources() {
 //        throw std::runtime_error("failed to create render pass!");
 //    }
 //    pipelineInfo.renderPass = render_pass;
+
     pipelineInfo.renderPass = vulkan_window->defaultRenderPass();
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -321,11 +326,6 @@ void VulkanRenderer::initResources() {
 
 void VulkanRenderer::initSwapChainResources() {
 
-    // Projection matrix
-//    m_proj = vulkan_window->clipCorrectionMatrix(); // adjust for Vulkan-OpenGL clip space differences
-//    const QSize sz = vulkan_window->swapChainImageSize();
-//    m_proj.perspective(45.0f, sz.width() / (float) sz.height(), 0.01f, 100.0f);
-//    m_proj.translate(0, 0, -2);
 }
 
 void VulkanRenderer::releaseSwapChainResources() {
@@ -377,32 +377,24 @@ void VulkanRenderer::releaseResources() {
 }
 
 void VulkanRenderer::startNextFrame() {
-    VkCommandBuffer cb = vulkan_window->currentCommandBuffer();
-    const QSize sz = vulkan_window->swapChainImageSize();
+    VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
 
+    plot_data->width = vulkan_window->width();
+    plot_data->height = vulkan_window->height();
+    uint plotsCount = vulkan_window->width() / (settings->design.plot_width + settings->design.gap_width);
+
+    // Background Color
     float red = settings->design.back_color.red;
     float green = settings->design.back_color.green;
     float blue = settings->design.back_color.blue;
     float alpha = settings->design.back_color.alpha;
 
-    VkClearColorValue clearColor = {{red, blue, green, alpha}};
+    VkClearColorValue clearColor = {{red, green, blue, alpha}};
     VkClearDepthStencilValue clearDS = { 1, 0 };
     VkClearValue clearValues[3]{};
 
     clearValues[0].color = clearValues[2].color = clearColor;
     clearValues[1].depthStencil = clearDS;
-
-
-    VkRenderPassBeginInfo rpBeginInfo{};
-    rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpBeginInfo.renderPass = vulkan_window->defaultRenderPass();
-    rpBeginInfo.framebuffer = vulkan_window->currentFramebuffer();
-    rpBeginInfo.renderArea.extent.width = sz.width();
-    rpBeginInfo.renderArea.extent.height = sz.height();
-    rpBeginInfo.clearValueCount = vulkan_window->sampleCountFlagBits() > VK_SAMPLE_COUNT_1_BIT ? 3 : 2;
-    rpBeginInfo.pClearValues = clearValues;
-    VkCommandBuffer cmdBuf = vulkan_window->currentCommandBuffer();
-    dev_funct->vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     // Create bars
     red = settings->design.main_color.red;
@@ -410,13 +402,9 @@ void VulkanRenderer::startNextFrame() {
     blue = settings->design.main_color.blue;
     alpha = settings->design.main_color.alpha;
 
-
-    plot_data->width = vulkan_window->width();
-    plot_data->height = vulkan_window->height();
-    uint plotsCount = vulkan_window->width() / (settings->design.plot_width + settings->design.gap_width);
-
-    float finalPlots[plotsCount];
     // Finalize plots height
+    float finalPlots[plotsCount];
+
     float relHeight = 2.0;
     for (uint i=0; i < plotsCount; i++ ) {
 
@@ -429,6 +417,7 @@ void VulkanRenderer::startNextFrame() {
             finalPlots[i] = settings->design.HEIGHT.MIN * relHeight;
     }
 
+    // Create Bars
     vector<Vertex> plotsVertexes;
     vector<uint32_t> plotsIndexes;
 
@@ -455,7 +444,7 @@ void VulkanRenderer::startNextFrame() {
             }
 
             vertex.pos = {xPos, -yPos};
-            vertex.color = {red, blue, green, alpha};
+            vertex.color = {red, green, blue, alpha};
             plotsVertexes.push_back(vertex);
         }
         xPlace += stepSize;
@@ -468,7 +457,6 @@ void VulkanRenderer::startNextFrame() {
         }
     }
 
-
     // Copy vertices data to mem
     void* data;
     dev_funct->vkMapMemory(vulkan_dev, vertex_buffer_mem, 0, VERTEX_BUFFER_SIZE, 0, &data);
@@ -479,40 +467,44 @@ void VulkanRenderer::startNextFrame() {
         memcpy(data, plotsIndexes.data(), plotsIndexes.size() * sizeof(plotsIndexes.data()[0]));
     dev_funct->vkUnmapMemory(vulkan_dev, index_buffer_mem);
 
-
-//    QMatrix4x4 m = m_proj;
-//    m.rotate(m_rotation, 0, 1, 0);
-//    memcpy(p, m.constData(), 16 * sizeof(float));
-//    dev_funct->vkUnmapMemory(vulkan_dev, m_bufMem);
-
-    // Not exactly a real animation system, just advance on every frame for now.
-//    m_rotation += 1.0f;
-
-    dev_funct->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-
     // Bind buffers
     VkBuffer vertexBuffers[] = {vertex_buffer};
     VkDeviceSize vbOffset[] = {0};
-    dev_funct->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, vbOffset);
-    dev_funct->vkCmdBindIndexBuffer(cb, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    dev_funct->vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, vbOffset);
+    dev_funct->vkCmdBindIndexBuffer(commandBuffer, index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
+    dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+    // Graphics view
     VkViewport viewport;
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = sz.width();
-    viewport.height = sz.height();
+    viewport.width = vulkan_window->width();
+    viewport.height = vulkan_window->height();
     viewport.minDepth = 0;
     viewport.maxDepth = 1;
-    dev_funct->vkCmdSetViewport(cb, 0, 1, &viewport);
+    dev_funct->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor;
     scissor.offset = {0, 0};
     scissor.extent.width = viewport.width;
     scissor.extent.height = viewport.height;
-    dev_funct->vkCmdSetScissor(cb, 0, 1, &scissor);
+    dev_funct->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    // Render Pass
+    VkRenderPassBeginInfo rpBeginInfo{};
+    rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpBeginInfo.renderPass = vulkan_window->defaultRenderPass();
+    rpBeginInfo.framebuffer = vulkan_window->currentFramebuffer();
+    rpBeginInfo.renderArea.extent.width = vulkan_window->width();
+    rpBeginInfo.renderArea.extent.height = vulkan_window->height();
+    rpBeginInfo.clearValueCount = vulkan_window->sampleCountFlagBits() > VK_SAMPLE_COUNT_1_BIT ? 3 : 2;
+    rpBeginInfo.pClearValues = clearValues;
+    VkCommandBuffer cmdBuf = vulkan_window->currentCommandBuffer();
+    dev_funct->vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     // DRAW FINALLY
-    dev_funct->vkCmdDrawIndexed(cb, static_cast<uint32_t>(plotsIndexes.size()), 1, 0, 0, 0);
+    dev_funct->vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(plotsIndexes.size()), 1, 0, 0, 0);
 
     dev_funct->vkCmdEndRenderPass(cmdBuf);
 

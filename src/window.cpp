@@ -21,13 +21,15 @@ MainWindow::MainWindow(VulkanWindow *vulkan_window) {
     this->setAttribute(Qt::WA_TranslucentBackground);
 
     QWidget *wrapper = QWidget::createWindowContainer(vulkan_window);
-//    wrapper->installEventFilter(this);
+    // Forward events to main window
     vulkan_window->installEventFilter(this);
 
     this->setCentralWidget(wrapper);
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
+    (void) obj;
+
     if (event->type() == QEvent::Wheel) {
         QCoreApplication::sendEvent(this, event);
         return true;
@@ -86,7 +88,7 @@ int init_gui(int argc, char *argv[], recidia_data *data, recidia_settings *setti
 
     QVulkanInstance inst;
 
-//    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
+    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
     inst.create();
     VulkanWindow *vulkanWindow = new VulkanWindow;
     vulkanWindow->plot_data = data;
@@ -175,9 +177,6 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
         index = pulseList->currentRow();
     else if (portList->selectedItems().size() != 0)
         index = portList->currentRow() + pulse_indexes.size()+d;
-
-//    app.exit(0);
-//    delete dialog; delete devList; delete layout; delete okButton; delete cancelButton;
 
     return index;
 }

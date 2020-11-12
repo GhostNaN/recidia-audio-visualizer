@@ -239,6 +239,7 @@ void init_processing(recidia_settings *settings, recidia_data *plot_data, recidi
         // Convert samples to double for FFTW
         for (i=0; i < audioBufferSize; i++ ) {
             fftIn[i] = (double) audio_data->samples[i];
+            // Set Freq test
 //            fftIn[i] =  32768 * sin(2 * 3.1415 * 5000 * (i / (double) 44100));
         }
 
