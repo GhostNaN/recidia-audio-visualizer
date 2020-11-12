@@ -6,6 +6,7 @@ fftw = dependency('fftw3')
 threads = dependency('threads')
 curses = dependency('ncursesw')
 libconfig = dependency('libconfig++')
+shaderc = dependency('shaderc')
 
 audio_check = false
 
@@ -31,4 +32,4 @@ qt5 = dependency('qt5', modules: ['Core', 'Gui', 'Widgets'])
 executable(meson.project_name(), ['src/main.cpp', 'src/audio.c', 'src/processing.cpp',
 'src/curses.cpp', 'src/config.cpp', 'src/window.cpp', 'src/vulkan.cpp'],
 include_directories : ['inc'],
-dependencies: [gsl, fftw, threads, curses, libconfig, pulse_simple, portaudio, qt5], install: true)
+dependencies: [gsl, fftw, threads, curses, libconfig, pulse_simple, portaudio, qt5, shaderc], install: true)

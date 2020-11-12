@@ -25,6 +25,8 @@ The Bad:
   - Teminal display
 - libconfig
   - Config file manager
+- shaderc
+  - Runtime shader compilation
   
 #### Must have at least one:
 - portaudio(optional)
@@ -39,6 +41,7 @@ AUR package - https://aur.archlinux.org/packages/recidia-audio-visualizer/
  #### Requirements:
 - meson
 - ninja
+- vulkan-headers
 
 #### To build:
 ```
@@ -52,6 +55,7 @@ And if you wish to install:
 ninja -C build install
 mkdir ~/.config/recidia/
 cp settings.cfg ~/.config/recidia/
+cp -r shaders ~/.config/recidia/
 ```
 
 ## Usage 

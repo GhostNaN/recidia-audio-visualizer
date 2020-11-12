@@ -3,6 +3,7 @@
 #include <QVulkanFunctions>
 
 #include <glm/glm.hpp>
+#include <shaderc/shaderc.hpp>
 
 #include <qt_window.h>
 
@@ -82,30 +83,42 @@ VulkanRenderer::VulkanRenderer(VulkanWindow *window) {
     vulkan_window = window;
 }
 
-VkShaderModule createShader(const string name) {
+VkShaderModule createShader(const string name, shaderc_shader_kind shader_kind) {
+    string homeDir = getenv("HOME");
+    vector<string> shaderFileLocations = {"shaders/",
+                                    "../shaders/",
+                                    homeDir + "/.config/recidia/shaders/",
+                                    "/etc/recidia/shaders/"};
     // Read shader file
-    ifstream file(name, ios::ate | ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
+    ifstream file;
+    for (uint i=0; i < shaderFileLocations.size(); i++) {
+        file.open(shaderFileLocations[i] + name);
+        if (file.is_open()) {
+            break;
+        }
     }
-    size_t fileSize = (size_t) file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to find shader file!");
+    }
+    std::string shaderText( (std::istreambuf_iterator<char>(file) ),
+                          (std::istreambuf_iterator<char>()    ) );
     file.close();
 
-    auto shaderCode = buffer;
+    shaderc::Compiler compiler;
+    shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(shaderText, shader_kind, "");
+    vector<uint32_t> spvCode;
+    spvCode.assign(result.cbegin(), result.cend());
 
     VkShaderModuleCreateInfo shaderInfo;
     shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shaderInfo.codeSize = shaderCode.size();
-    shaderInfo.pCode = reinterpret_cast<const uint32_t *>(shaderCode.data());
+    shaderInfo.codeSize = sizeof(uint32_t) * spvCode.size();
+    shaderInfo.pCode = (const uint32_t*) spvCode.data();
     shaderInfo.pNext = nullptr; // WILL SEGV WITHOUT
 
     VkShaderModule shaderModule;
     VkResult err = dev_funct->vkCreateShaderModule(vulkan_dev, &shaderInfo, nullptr, &shaderModule);
     if (err != VK_SUCCESS) {
-        qWarning("Failed to create shader module: %d", err);
+        printf("Failed to create shader module: %d\n", err);
         return VK_NULL_HANDLE;
     }
 
@@ -167,8 +180,8 @@ void VulkanRenderer::initResources() {
     pipelineInfo.pVertexInputState = &vertexInputInfo;
 
     // Shaders
-    VkShaderModule vertShaderModule = createShader("../vulkan/vert.spv");
-    VkShaderModule fragShaderModule = createShader("../vulkan/frag.spv");
+    VkShaderModule vertShaderModule = createShader("default.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
+    VkShaderModule fragShaderModule = createShader("default.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
