@@ -88,7 +88,7 @@ int init_gui(int argc, char *argv[], recidia_data *data, recidia_settings *setti
 
     QVulkanInstance inst;
 
-    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
+//    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
     inst.create();
     VulkanWindow *vulkanWindow = new VulkanWindow;
     vulkanWindow->plot_data = data;

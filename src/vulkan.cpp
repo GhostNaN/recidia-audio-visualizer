@@ -71,7 +71,8 @@ QVulkanWindowRenderer *VulkanWindow::createRenderer() {
     if (!BUFFERS_SIZE_FINALIZED) {
         VERTEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
         INDEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
-    BUFFERS_SIZE_FINALIZED = true;
+
+        BUFFERS_SIZE_FINALIZED = true;
     }
 
     return renderer;
