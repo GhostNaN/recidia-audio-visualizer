@@ -19,6 +19,8 @@ The Bad:
 ## Dependencies
 - gsl
   - Linear algebra
+- glm
+  - Vulkan linear algebra
 - fftw 
   - Fast Fourier Transform
 - ncurses
