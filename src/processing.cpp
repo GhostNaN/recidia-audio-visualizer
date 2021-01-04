@@ -2,30 +2,28 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
-#include <chrono>
 
 #include <fftw3.h>
-#include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 
 #include <recidia.h>
 
 using namespace std;
 
-static void create_chart_table(uint chart_size, uint *chart_table, recidia_settings *settings, recidia_audio_data *audio_data) {
+static void create_chart_table(uint chart_size, uint *chart_table, recidia_audio_data *audio_data) {
 
     uint i, j;
 
     float beizerTable[chart_size];
 
-    float plotFreq = (float) audio_data->sample_rate / (float) settings->data.audio_buffer_size;
+    float plotFreq = (float) audio_data->sample_rate / (float) recidia_settings.data.audio_buffer_size;
 
-    float startPoint = settings->data.chart_guide.start_freq / plotFreq;
-    float startCtrl = startPoint * settings->data.chart_guide.start_ctrl;
-    float midPoint = settings->data.chart_guide.mid_freq / plotFreq;
-    uint midPointPos = round(chart_size * settings->data.chart_guide.mid_pos);
-    float midCtrl = midPoint * settings->data.chart_guide.end_ctrl;
-    float endPoint = settings->data.chart_guide.end_freq / plotFreq;
+    float startPoint = recidia_settings.data.chart_guide.start_freq / plotFreq;
+    float startCtrl = startPoint * recidia_settings.data.chart_guide.start_ctrl;
+    float midPoint = recidia_settings.data.chart_guide.mid_freq / plotFreq;
+    uint midPointPos = round(chart_size * recidia_settings.data.chart_guide.mid_pos);
+    float midCtrl = midPoint * recidia_settings.data.chart_guide.end_ctrl;
+    float endPoint = recidia_settings.data.chart_guide.end_freq / plotFreq;
 
     uint samples;
     float p0, p2, c, n;
@@ -55,7 +53,7 @@ static void create_chart_table(uint chart_size, uint *chart_table, recidia_setti
     }
 
     float stepSize = 1;
-    float limit = settings->data.audio_buffer_size / 2;
+    float limit = recidia_settings.data.audio_buffer_size / 2;
     float prevStep;
     float nextStep = beizerTable[0];
     chart_table[0] = (uint) beizerTable[0];
@@ -157,7 +155,7 @@ static gsl_matrix* moore_penrose_pinv(gsl_matrix *A, const double rcond) {
     return A_pinv;
 }
 
-static void get_savgol_coeffs(vector<float> *in, int window_size, int poly_order ) {
+static vector<float> get_savgol_coeffs(int window_size, int poly_order ) {
     const int halfWindow = (window_size - 1) / 2;
 
     gsl_matrix *A = gsl_matrix_alloc(window_size, poly_order+1);
@@ -182,58 +180,77 @@ static void get_savgol_coeffs(vector<float> *in, int window_size, int poly_order
     gsl_matrix_free(A);
     gsl_matrix_free(A_pinv);
 
-    *in = out;
+    return out;
 }
 //[[ 1 -2  4 -8] [ 1 -1  1 -1] [ 1  0  0  0] [ 1  1  1  1] [ 1  2  4  8]]
 // [-0.08571429  0.34285714  0.48571429  0.34285714 -0.08571429]
 
-void init_processing(recidia_settings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync) {
+void init_processing(recidia_audio_data *audio_data) {
     // Allocate Default Vars
     uint i, j;
     uint interpIndex = 0;
 
-    uint audioBufferSize = settings->data.audio_buffer_size;
-    uint interp = settings->data.interp;
-    uint plotsCount = plot_data->width / (settings->design.plot_width + settings->design.gap_width);
-    uint savgolWindowSize = settings->data.savgol_filter.window_size;
+    // Copy of some settings
+    uint audioBufferSize = recidia_settings.data.audio_buffer_size;
+    uint interp = recidia_settings.data.interp;
+    uint plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
+    float savgolRelativeWindowSize = recidia_settings.data.savgol_filter.window_size;
+    uint savgolWindowSize = savgolRelativeWindowSize * plotsCount;
 
-    double *fftIn = (double*) fftw_malloc(sizeof(double) * settings->data.AUDIO_BUFFER_SIZE.MAX);
-    double *fftOut = (double*) fftw_malloc(sizeof(double) * settings->data.AUDIO_BUFFER_SIZE.MAX);
+    double *fftIn = (double*) fftw_malloc(sizeof(double) * recidia_settings.data.AUDIO_BUFFER_SIZE.MAX);
+    double *fftOut = (double*) fftw_malloc(sizeof(double) * recidia_settings.data.AUDIO_BUFFER_SIZE.MAX);
     fftw_plan fftPlan = fftw_plan_r2r_1d(audioBufferSize, fftIn, fftOut, FFTW_R2HC, FFTW_MEASURE);
 
-    float interpArray[settings->data.INTERP.MAX][settings->data.AUDIO_BUFFER_SIZE.MAX/2];
-    float proArray[settings->data.AUDIO_BUFFER_SIZE.MAX/2];
-    uint chartTable[settings->data.AUDIO_BUFFER_SIZE.MAX/2];
+    float interpArray[recidia_settings.data.INTERP.MAX][recidia_settings.data.AUDIO_BUFFER_SIZE.MAX/2];
+    float proArray[recidia_settings.data.AUDIO_BUFFER_SIZE.MAX/2];
+    uint chartTable[recidia_settings.data.AUDIO_BUFFER_SIZE.MAX/2];
     vector<float> pinvVector;
 
-    create_chart_table(plotsCount, chartTable, settings, audio_data);
-    if (settings->data.savgol_filter.window_size > settings->data.savgol_filter.poly_order + 1)
-        get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->data.savgol_filter.poly_order);
+    create_chart_table(plotsCount, chartTable, audio_data);
+    if (recidia_settings.data.savgol_filter.window_size > recidia_settings.data.savgol_filter.poly_order + 1)
+        pinvVector = get_savgol_coeffs(savgolWindowSize, recidia_settings.data.savgol_filter.poly_order);
 
     while (1) {
+        u_int64_t timerStart = utime_now();
+
         // Handling volatile vars
-        if (audioBufferSize != settings->data.audio_buffer_size) {
-            audioBufferSize = settings->data.audio_buffer_size;
+        if (audioBufferSize != recidia_settings.data.audio_buffer_size) {
+            audioBufferSize = recidia_settings.data.audio_buffer_size;
 
             fftw_destroy_plan(fftPlan);
             fftPlan = fftw_plan_r2r_1d(audioBufferSize, fftIn, fftOut, FFTW_R2HC, FFTW_MEASURE);
-            create_chart_table(plotsCount, chartTable, settings, audio_data);
+            create_chart_table(plotsCount, chartTable, audio_data);
         }
-        if (interp != settings->data.interp) {
-            interp = settings->data.interp;
+        if (interp != recidia_settings.data.interp) {
+            interp = recidia_settings.data.interp;
 
             interpIndex = 0;
         }
-        if (plotsCount != plot_data->width / (settings->design.plot_width + settings->design.gap_width)) {
-            plotsCount = plot_data->width / (settings->design.plot_width + settings->design.gap_width);
+        if (plotsCount != recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) {
+            plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
 
-            create_chart_table(plotsCount, chartTable, settings, audio_data);
+            if (savgolRelativeWindowSize) {
+                savgolWindowSize = savgolRelativeWindowSize * plotsCount;
+                if (savgolWindowSize % 2 == 0) savgolWindowSize += 1;
+                if (savgolWindowSize < recidia_settings.data.savgol_filter.poly_order+2)
+                    savgolWindowSize = recidia_settings.data.savgol_filter.poly_order+2;
+                pinvVector = get_savgol_coeffs(savgolWindowSize, recidia_settings.data.savgol_filter.poly_order);
+            }
+
+            create_chart_table(plotsCount, chartTable, audio_data);
         }
-        if (savgolWindowSize != settings->data.savgol_filter.window_size) {
-            savgolWindowSize = settings->data.savgol_filter.window_size;
+        if (savgolRelativeWindowSize != recidia_settings.data.savgol_filter.window_size) {
+            savgolRelativeWindowSize = recidia_settings.data.savgol_filter.window_size;
 
-            if (settings->data.savgol_filter.window_size > settings->data.savgol_filter.poly_order + 1)
-                get_savgol_coeffs(&pinvVector, savgolWindowSize, settings->data.savgol_filter.poly_order);
+            if (savgolRelativeWindowSize) {
+                savgolWindowSize = savgolRelativeWindowSize * plotsCount;
+                if (savgolWindowSize % 2 == 0) savgolWindowSize += 1;
+                if (savgolWindowSize < recidia_settings.data.savgol_filter.poly_order+2)
+                    savgolWindowSize = recidia_settings.data.savgol_filter.poly_order+2;
+                pinvVector = get_savgol_coeffs(savgolWindowSize, recidia_settings.data.savgol_filter.poly_order);
+            }
+            else
+                savgolWindowSize = 0;
         }
 
         // Convert samples to double for FFTW
@@ -244,8 +261,7 @@ void init_processing(recidia_settings *settings, recidia_data *plot_data, recidi
         }
 
         // For latency display
-        auto chronoTime = chrono::high_resolution_clock::now();
-        plot_data->time = chrono::duration<double>(chronoTime.time_since_epoch()).count();
+        recidia_data.time = utime_now();
 
         fftw_execute(fftPlan);
 
@@ -267,15 +283,8 @@ void init_processing(recidia_settings *settings, recidia_data *plot_data, recidi
         }
 
         // Savitzky Golay Filter
-        if (savgolWindowSize > settings->data.savgol_filter.poly_order + 1) {
-            // Correct windowSize if needed as it must be a positive odd number
-            int windowSize = savgolWindowSize;
-            if (windowSize > (int) plotsCount)
-                windowSize = plotsCount;
-            if (windowSize % 2 == 0)
-                windowSize += 1;
-
-            int halfWindow = (windowSize - 1) / 2;
+        if (savgolWindowSize >= recidia_settings.data.savgol_filter.poly_order + 2) {
+            int halfWindow = (savgolWindowSize - 1) / 2;
 
             vector<float> filterIn(proArray, proArray+plotsCount);
             // Pad signal at extremes
@@ -329,11 +338,14 @@ void init_processing(recidia_settings *settings, recidia_data *plot_data, recidi
 
         // Send out plots
         for (i=0; i < plotsCount; i++ ) {
-            plot_data->plots[i] = proArray[i];
+            recidia_data.plots[i] = proArray[i];
         }
 
-        // Wait
-        sync->status = 1;
-        while (sync->status) { usleep(1000); }
+        // Sleep for poll time
+        uint latency = utime_now() - timerStart;
+
+        int sleepTime = ((recidia_settings.data.poll_rate * 1000) - latency);
+        if (sleepTime > 0)
+            usleep(sleepTime);
     }
 }

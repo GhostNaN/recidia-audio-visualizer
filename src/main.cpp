@@ -9,28 +9,15 @@
 
 using namespace std;
 
-static void init_main_loop(recidia_settings *settings, recidia_data *data, recidia_sync *proSync, recidia_sync *cursesSync) {
-    while(1) {
-        auto timerStart = chrono::high_resolution_clock::now();
+// Set globals
+struct recidia_settings_struct recidia_settings;
+struct recidia_data_struct recidia_data;
 
-        proSync->status = 0;
-        while (!proSync->status) { usleep(1000); }
-        if (cursesSync) {
-            cursesSync->status = 0;
-            while (!cursesSync->status) { usleep(1000); }
-        }
-
-        // Global timer
-        chrono::duration<double> timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
-        double latency = timerEnd.count();
-
-        int sleepTime = ((1000 / (double) settings->misc.fps) - latency) * 1000;
-        if (sleepTime > 0)
-            usleep(sleepTime);
-
-        timerEnd = (chrono::high_resolution_clock::now() - timerStart) * 1000;
-        data->frame_time = timerEnd.count();
-    }
+u_int64_t utime_now() {
+    auto high_res_time = chrono::high_resolution_clock::now();
+    auto duration = high_res_time.time_since_epoch();
+    auto time = std::chrono::duration_cast< std::chrono::microseconds>(duration);
+    return time.count();
 }
 
 void get_audio_device(recidia_audio_data *audio_data, int GUI) {
@@ -164,7 +151,6 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         i++;
     }
 
-
     // Begin collecting audio data
     if (pulseDevice) {
         audio_data->pulse_device = pulseDevice;
@@ -179,50 +165,37 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 }
 
 int main(int argc, char **argv) {
-    (void) argv;
     // GUI if any arg, else it's terminal
     int GUI = argc-1;
 
     // Get settings
-    recidia_settings settings;
-    get_settings(&settings, GUI);    
+    recidia_settings = {};
+    get_settings(GUI);
 
     // Init Audio Collection
     recidia_audio_data audioData;
     audioData.frame_index = 0;
-    audioData.buffer_size = &settings.data.audio_buffer_size;
-    audioData.samples = (short*) calloc(settings.data.AUDIO_BUFFER_SIZE.MAX, sizeof(short));
+    audioData.buffer_size = &recidia_settings.data.audio_buffer_size;
+    audioData.samples = (short*) calloc(recidia_settings.data.AUDIO_BUFFER_SIZE.MAX, sizeof(short));
 
     get_audio_device(&audioData, GUI);
 
     // Data shared between threads
-    recidia_data data;
-    data.width = 10;
-    data.height = 10;
-    data.time = 0;
-    data.frame_time = 0;
-    data.plots = (float*) calloc(settings.data.AUDIO_BUFFER_SIZE.MAX / 2, sizeof(float));
+    recidia_data = {};
+    recidia_data.width = 10;
+    recidia_data.height = 10;
+    recidia_data.time = 0;
+    recidia_data.frame_time = 0;
+    recidia_data.plots = (float*) calloc(recidia_settings.data.AUDIO_BUFFER_SIZE.MAX / 2, sizeof(float));
 
     // Init processing
-    recidia_sync proSync;
-    proSync.status = 0;
-    proSync.inbound = 0;
-    proSync.outbound = 0;
-    thread proThread(init_processing, &settings, &data, &audioData, &proSync);
-
-    // Init curses
-    recidia_sync cursesSync;
-    cursesSync.status = 0;
-    cursesSync.inbound = 0;
-    cursesSync.outbound = 0;
+    thread proThread(init_processing, &audioData);
 
     if (GUI) {
-        thread loopThread(init_main_loop, &settings, &data, &proSync, nullptr);
-        init_gui(argc, argv, &data, &settings);
+        init_gui(argc, argv);
     }
     else {
-        thread loopThread(init_main_loop, &settings, &data, &proSync, &cursesSync);
-        init_curses(&settings, &data, &cursesSync);
+        init_curses();
     }
 
     return 0;

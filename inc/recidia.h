@@ -20,10 +20,12 @@ const int INTERPOLATION_INCREASE = 10;
 const int AUDIO_BUFFER_SIZE_DECREASE = 11;
 const int AUDIO_BUFFER_SIZE_INCREASE = 12;
 
-const int FPS_DECREASE = 13;
-const int FPS_INCREASE = 14;
+const int FPS_CAP_DECREASE = 13;
+const int FPS_CAP_INCREASE = 14;
 
 const int STATS_TOGGLE = 15;
+
+const int DRAW_MODE_TOGGLE = 16;
 
 
 const int PULSE_INPUT = 0;
@@ -84,8 +86,8 @@ struct recidia_data_settings {
     recidia_const_setting<unsigned int> AUDIO_BUFFER_SIZE; 
     
     struct savgol_filter { 
-        unsigned int window_size; 
-        unsigned int poly_order; 
+        float window_size; 
+        uint poly_order; 
     } savgol_filter;
     
     struct chart_guide {
@@ -96,62 +98,66 @@ struct recidia_data_settings {
         float end_ctrl;
         float end_freq;
     } chart_guide;
+    
+    float poll_rate;
+    recidia_const_setting<float> POLL_RATE;
 };
 
-struct float_rgba_color {
-    float red;
-    float green;
-    float blue;
-    float alpha;
+struct rgba_color {
+    uint red;
+    uint green;
+    uint blue;
+    uint alpha;
 };
 
 struct recidia_design_settings {
-    recidia_const_setting<float> HEIGHT;
+    float draw_x;
+    float draw_y;
+    float draw_width;
+    float draw_height;
+    float min_plot_height;
     unsigned int plot_width;
     recidia_const_setting<unsigned int> PLOT_WIDTH;
     unsigned int gap_width;
     recidia_const_setting<unsigned int> GAP_WIDTH;
+    int draw_mode;
+    unsigned int fps_cap;
+    recidia_const_setting<unsigned int> FPS_CAP;
     
-    float_rgba_color main_color;
-    float_rgba_color back_color;
+    rgba_color main_color;
+    rgba_color back_color;
 };
 
 struct recidia_misc_settings {
-    unsigned int fps;
-    recidia_const_setting<unsigned int> FPS;
-    
     int stats;
 };
 
-typedef struct recidia_settings {
+// Global settings/data because it's used EVERYWHERE, passing is stupid
+struct recidia_settings_struct {
     struct recidia_data_settings data;
     struct recidia_design_settings design;
     struct recidia_misc_settings misc;
-    
-} recidia_settings;
+};
+extern struct recidia_settings_struct recidia_settings;
 
-typedef struct recidia_data {    
+struct recidia_data_struct {    
     unsigned int width, height;
     double time;
     float frame_time;
     float *plots;
-    
-} recidia_data;
+};
+extern struct recidia_data_struct recidia_data;
 
-typedef struct recidia_sync {   
-    int status; 
-    int inbound;
-    int outbound;
-    
-} recidia_sync;
 
-void change_setting_by_key(recidia_settings *settings, char key);
+void change_setting_by_key(char key);
 
-void get_settings(recidia_settings *settings, int GUI);
+void get_settings(int GUI);
 
-void init_curses(recidia_settings *settings, recidia_data *data, recidia_sync *sync);
+void init_curses();
 
-void init_processing(recidia_settings *settings, recidia_data *plot_data, recidia_audio_data *audio_data, recidia_sync *sync);
+void init_processing(recidia_audio_data *audio_data);
+
+u_int64_t utime_now();
 #endif
 
 #endif

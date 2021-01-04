@@ -11,24 +11,20 @@
 
 int display_audio_devices(std::vector<std::string> devices, std::vector<uint> pulse_indexes, std::vector<uint> port_indexes);
 
-int init_gui(int argc, char *argv[], recidia_data *data, recidia_settings *setttings);
+int init_gui(int argc, char *argv[]);
 
 class VulkanWindow : public QVulkanWindow {
     
 public:
-    recidia_data *plot_data;
-    recidia_settings *settings;  
-    
     QVulkanWindowRenderer *createRenderer() override;
+    
+protected:
+    void wheelEvent(QWheelEvent *event) override;
 };
-
 
 class VulkanRenderer : public QVulkanWindowRenderer {
     
 public:
-    recidia_data *plot_data;
-    recidia_settings *settings;  
-    
     VulkanRenderer(VulkanWindow *w);
 
     void initResources() override;
@@ -39,6 +35,8 @@ public:
     void startNextFrame() override;
 
 private:
+    double last_frame_time;
+    
     VkDeviceMemory m_bufMem = VK_NULL_HANDLE;
     VkBuffer m_buf = VK_NULL_HANDLE;
     VkDescriptorBufferInfo m_uniformBufInfo[QVulkanWindow::MAX_CONCURRENT_FRAME_COUNT];
@@ -59,17 +57,19 @@ private:
 class MainWindow : public QMainWindow {
     
 public:
-    recidia_data *plot_data;
-    recidia_settings *settings;  
+    QWidget *vulkan_window_wrapper;
 
     explicit MainWindow(VulkanWindow *w);
+    
+private:
+    QTabWidget *settings_tabs;
+    bool is_windowless = 0;
     
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
     
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;
-    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 };

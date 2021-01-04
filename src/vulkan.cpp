@@ -1,6 +1,8 @@
 #include <fstream>
+#include <unistd.h>
 
 #include <QVulkanFunctions>
+#include <QApplication>
 
 #include <glm/glm.hpp>
 #include <shaderc/shaderc.hpp>
@@ -65,13 +67,11 @@ static bool BUFFERS_SIZE_FINALIZED = false;
 
 QVulkanWindowRenderer *VulkanWindow::createRenderer() {
     VulkanRenderer *renderer = new VulkanRenderer(this);
-    renderer->plot_data = this->plot_data;
-    renderer->settings = this->settings;
 
     // Set "const" buffer sizes
     if (!BUFFERS_SIZE_FINALIZED) {
-        VERTEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
-        INDEX_BUFFER_SIZE *= settings->data.AUDIO_BUFFER_SIZE.MAX / 2;
+        VERTEX_BUFFER_SIZE *= recidia_settings.data.AUDIO_BUFFER_SIZE.MAX / 2;
+        INDEX_BUFFER_SIZE *= recidia_settings.data.AUDIO_BUFFER_SIZE.MAX / 2;
 
         BUFFERS_SIZE_FINALIZED = true;
     }
@@ -114,6 +114,7 @@ VkShaderModule createShader(const string name, shaderc_shader_kind shader_kind) 
     shaderInfo.codeSize = sizeof(uint32_t) * spvCode.size();
     shaderInfo.pCode = (const uint32_t*) spvCode.data();
     shaderInfo.pNext = nullptr; // WILL SEGV WITHOUT
+    shaderInfo.flags = 0;
 
     VkShaderModule shaderModule;
     VkResult err = dev_funct->vkCreateShaderModule(vulkan_dev, &shaderInfo, nullptr, &shaderModule);
@@ -177,6 +178,7 @@ void VulkanRenderer::initResources() {
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
     vertexInputInfo.pNext = nullptr;
+    vertexInputInfo.flags = 0;
     pipelineInfo.pVertexInputState = &vertexInputInfo;
 
     // Shaders
@@ -222,8 +224,8 @@ void VulkanRenderer::initResources() {
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_NONE; // NEEDED to flip y axis
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; // NEEDED to flip y axis
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     pipelineInfo.pRasterizationState = &rasterizer;
 
@@ -250,8 +252,8 @@ void VulkanRenderer::initResources() {
     colorBlendAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     colorBlendAtt.alphaBlendOp = VK_BLEND_OP_ADD;
     colorBlendAtt.colorWriteMask = 0xF; // All Colors
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
 
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.logicOpEnable = VK_FALSE;
     colorBlending.attachmentCount = 1;
@@ -390,18 +392,28 @@ void VulkanRenderer::releaseResources() {
     }
 }
 
+float get_linear_color(uint srgb) {
+
+    float srgbF = (float) srgb / 255;
+
+    if (srgbF <= 0.04045)
+        return srgbF/12.92;
+    else
+        return pow((srgbF+0.055) / 1.055, 2.4);
+}
+
 void VulkanRenderer::startNextFrame() {
     VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
 
-    plot_data->width = vulkan_window->width();
-    plot_data->height = vulkan_window->height();
-    uint plotsCount = vulkan_window->width() / (settings->design.plot_width + settings->design.gap_width);
+    recidia_data.width = vulkan_window->width() * recidia_settings.design.draw_width;
+    recidia_data.height = vulkan_window->height();
+    uint plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
 
     // Background Color
-    float red = settings->design.back_color.red;
-    float green = settings->design.back_color.green;
-    float blue = settings->design.back_color.blue;
-    float alpha = settings->design.back_color.alpha;
+    float alpha = (float) recidia_settings.design.back_color.alpha / 255;
+    float red = get_linear_color(recidia_settings.design.back_color.red) * alpha;
+    float green = get_linear_color(recidia_settings.design.back_color.green) * alpha;
+    float blue = get_linear_color(recidia_settings.design.back_color.blue) * alpha;
 
     VkClearColorValue clearColor = {{red, green, blue, alpha}};
     VkClearDepthStencilValue clearDS = { 1, 0 };
@@ -411,10 +423,10 @@ void VulkanRenderer::startNextFrame() {
     clearValues[1].depthStencil = clearDS;
 
     // Create bars
-    red = settings->design.main_color.red;
-    green = settings->design.main_color.green;
-    blue = settings->design.main_color.blue;
-    alpha = settings->design.main_color.alpha;
+    alpha = (float) recidia_settings.design.main_color.alpha / 255;
+    red = get_linear_color(recidia_settings.design.main_color.red) * alpha;
+    green = get_linear_color(recidia_settings.design.main_color.green) * alpha;
+    blue = get_linear_color(recidia_settings.design.main_color.blue) * alpha;
 
     // Finalize plots height
     float finalPlots[plotsCount];
@@ -423,12 +435,12 @@ void VulkanRenderer::startNextFrame() {
     for (uint i=0; i < plotsCount; i++ ) {
 
         // Scale plots
-        finalPlots[i] = (plot_data->plots[i] / settings->data.height_cap) * relHeight;
-        if (finalPlots[i] > settings->design.HEIGHT.MAX * relHeight) {
-            finalPlots[i] = settings->design.HEIGHT.MAX * relHeight;
+        finalPlots[i] = (recidia_data.plots[i] / recidia_settings.data.height_cap) * relHeight;
+        if (finalPlots[i] > recidia_settings.design.draw_height * relHeight) {
+            finalPlots[i] = recidia_settings.design.draw_height * relHeight;
         }
-        else if (finalPlots[i] < settings->design.HEIGHT.MIN * relHeight)
-            finalPlots[i] = settings->design.HEIGHT.MIN * relHeight;
+        else if (finalPlots[i] < recidia_settings.design.min_plot_height * relHeight)
+            finalPlots[i] = recidia_settings.design.min_plot_height * relHeight;
     }
 
     // Create Bars
@@ -437,10 +449,10 @@ void VulkanRenderer::startNextFrame() {
 
     float relSize = relHeight / (float) vulkan_window->width(); // Pixel to relative
 
-    float plotSize = relSize * (float) settings->design.plot_width;
-    float stepSize = relSize * (float) (settings->design.plot_width + settings->design.gap_width);
+    float plotSize = relSize * (float) recidia_settings.design.plot_width;
+    float stepSize = relSize * (float) (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
 
-    float xPlace = -1.0;
+    float xPlace = recidia_settings.design.draw_x;
     float xPos, yPos;
     for(uint i=0; i < plotsCount; i++) {
 
@@ -448,13 +460,16 @@ void VulkanRenderer::startNextFrame() {
             auto vertex = BAR_VERTICES[j];
 
             xPos = xPlace;
-            yPos = -1.0;
+            yPos = recidia_settings.design.draw_y;
 
             if (j == 1 || j == 2) {
                 xPos += plotSize;
             }
             if (j > 1) {
-                yPos += finalPlots[i];
+                if (j == 2 && i < plotsCount-1 && recidia_settings.design.draw_mode == 1)
+                    yPos += finalPlots[i+1];
+                else
+                    yPos += finalPlots[i];
             }
 
             vertex.pos = {xPos, -yPos};
@@ -523,5 +538,17 @@ void VulkanRenderer::startNextFrame() {
     dev_funct->vkCmdEndRenderPass(cmdBuf);
 
     vulkan_window->frameReady();
+
+    // Sleep for fps cap
+    double frameTime = 0;
+    double sleepTime = (1000 / (double) recidia_settings.design.fps_cap) * 1000;
+    while (sleepTime > frameTime) {
+        QApplication::processEvents(QEventLoop::AllEvents, 1);
+        usleep(100);
+
+        frameTime = utime_now() - last_frame_time;
+    }
+    last_frame_time = utime_now();
+
     vulkan_window->requestUpdate(); // render continuously, throttled by the presentation rate
 }
