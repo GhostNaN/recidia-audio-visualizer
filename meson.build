@@ -30,6 +30,6 @@ qt5 = dependency('qt5', modules: ['Core', 'Gui', 'Widgets'])
 #add_project_arguments('-D_FORTIFY_SOURCE=2', '-O2', language : 'cpp')
 
 executable(meson.project_name(), ['src/main.cpp', 'src/audio.c', 'src/processing.cpp',
-'src/curses.cpp', 'src/config.cpp', 'src/window.cpp', 'src/vulkan.cpp'],
+'src/curses.cpp', 'src/config.cpp', 'src/window.cpp', 'src/vulkan.cpp', 'src/settings_gui.cpp'],
 include_directories : ['inc'],
 dependencies: [gsl, fftw, threads, curses, libconfig, pulse_simple, portaudio, qt5, shaderc], install: true)

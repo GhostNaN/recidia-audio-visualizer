@@ -39,6 +39,7 @@ void init_curses() {
     uint audioBufferSize = recidia_settings.data.audio_buffer_size;
     uint plotsCount = recidia_data.width / (plotWidth + gapWidth);
     uint fps = recidia_settings.design.fps_cap;
+    uint poll_rate = recidia_settings.data.poll_rate;
 
     string settingToDisplay;
     uint timeOfDisplayed = 0;
@@ -93,6 +94,12 @@ void init_curses() {
 
             timeOfDisplayed = 0;
             settingToDisplay = "Audio Buffer Size " + to_string(audioBufferSize);
+        }
+        if (poll_rate != recidia_settings.data.poll_rate) {
+            poll_rate = recidia_settings.data.poll_rate;
+
+            timeOfDisplayed = 0;
+            settingToDisplay = "Poll Rate " + to_string(poll_rate) + "ms";
         }
         if (fps != recidia_settings.design.fps_cap) {
             fps = recidia_settings.design.fps_cap;

@@ -2,6 +2,10 @@
 #include <QMainWindow>
 #include <QVulkanWindow>
 
+#include <QPushButton>
+#include <QSlider>
+#include <QSpinBox>
+
 #include <string>
 #include <vector>
 
@@ -13,10 +17,36 @@ int display_audio_devices(std::vector<std::string> devices, std::vector<uint> pu
 
 int init_gui(int argc, char *argv[]);
 
+class MainWindow;
+
+
+class SettingsTabWidget : public QTabWidget {
+    
+public:
+    explicit SettingsTabWidget();
+    // Turns keys to a change
+    void change_setting(char key);
+    void change_setting(int change);
+    
+private:
+    QSlider *heightCapSlider;
+    QSlider *savgolWindowSizeSlider;
+    QSlider *interpolationSlider;
+    QSlider *audioBufferSizeSlider;
+    QSpinBox *pollRateSpinBox;
+    
+    QSlider *plotWidthSlider;
+    QSlider *gapWidthSlider;
+    QPushButton *drawModeButton;
+    QSpinBox *fpsCapSpinBox;
+};
+
+
 class VulkanWindow : public QVulkanWindow {
     
 public:
     QVulkanWindowRenderer *createRenderer() override;
+    MainWindow *main_window;
     
 protected:
     void wheelEvent(QWheelEvent *event) override;
@@ -57,18 +87,18 @@ private:
 class MainWindow : public QMainWindow {
     
 public:
-    QWidget *vulkan_window_wrapper;
-
     explicit MainWindow(VulkanWindow *w);
     
+    VulkanWindow *vulkan_window;
+    SettingsTabWidget *settings_tabs;
+    
 private:
-    QTabWidget *settings_tabs;
     bool is_windowless = 0;
     
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
     
-    void showEvent(QShowEvent *event) override;
+    //void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;

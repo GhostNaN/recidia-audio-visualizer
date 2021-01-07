@@ -14,6 +14,10 @@ constexpr uint str2int(const char* str, int h = 0) {
     return !str[h] ? 5381 : (str2int(str, h+1) * 33) ^ str[h];
 }
 
+int get_setting_change(char key) {
+    return setttings_key_map[key];
+}
+
 void change_setting_by_key(char key) {
 
     switch (setttings_key_map[key]) {
@@ -85,6 +89,15 @@ void change_setting_by_key(char key) {
                 recidia_settings.data.audio_buffer_size *= 2;
             break;
 
+        case POLL_RATE_DECREASE:
+            if (recidia_settings.data.poll_rate > 1)
+                recidia_settings.data.poll_rate -= 1;
+            break;
+        case POLL_RATE_INCREASE:
+            if (recidia_settings.data.poll_rate < recidia_settings.data.POLL_RATE.MAX)
+                recidia_settings.data.poll_rate += 1;
+            break;
+
         case FPS_CAP_DECREASE:
             if (recidia_settings.design.fps_cap > 1)
                 recidia_settings.design.fps_cap -= 1;
@@ -113,10 +126,16 @@ void change_setting_by_key(char key) {
 
 template <typename T>
 static void set_const_setting(recidia_const_setting<T> *setting, libconfig::Setting &conf_setting) {
+    string stringKey;
 
     conf_setting.lookupValue("min", setting->MIN);
     conf_setting.lookupValue("max", setting->MAX);
     conf_setting.lookupValue("default", setting->DEFAULT);
+
+    conf_setting.lookupValue("decrease_key", stringKey);
+    setting->KEY_DECREASE = stringKey.c_str()[0];
+    conf_setting.lookupValue("increase_key", stringKey);
+    setting->KEY_INCREASE = stringKey.c_str()[0];
 }
 
 static void set_const_key(libconfig::Setting &conf_setting, const char *control, int change) {
@@ -149,7 +168,7 @@ void get_settings(int GUI) {
         }
     }
 
-    // Set settings from recidia_settings.cfg
+    // Set settings from settings.cfg
     libconfig::Setting &root = cfg.getRoot();
 
     string settingsList[2] = {"shared_settings"};
@@ -234,6 +253,8 @@ void get_settings(int GUI) {
                 case str2int("Poll Rate"):
                     confSetting.lookupValue("default", recidia_settings.data.poll_rate);
                     set_const_setting(&recidia_settings.data.POLL_RATE, confSetting);
+                    set_const_key(confSetting, "decrease_key", POLL_RATE_DECREASE);
+                    set_const_key(confSetting, "increase_key", POLL_RATE_INCREASE);
                     break;
 
                 case str2int("FPS Cap"):

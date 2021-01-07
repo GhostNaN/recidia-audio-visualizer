@@ -20,12 +20,15 @@ const int INTERPOLATION_INCREASE = 10;
 const int AUDIO_BUFFER_SIZE_DECREASE = 11;
 const int AUDIO_BUFFER_SIZE_INCREASE = 12;
 
-const int FPS_CAP_DECREASE = 13;
-const int FPS_CAP_INCREASE = 14;
+const int POLL_RATE_DECREASE = 13;
+const int POLL_RATE_INCREASE = 14;
 
-const int STATS_TOGGLE = 15;
+const int FPS_CAP_DECREASE = 15;
+const int FPS_CAP_INCREASE = 16;
 
-const int DRAW_MODE_TOGGLE = 16;
+const int STATS_TOGGLE = 17;
+
+const int DRAW_MODE_TOGGLE = 18;
 
 
 const int PULSE_INPUT = 0;
@@ -134,6 +137,7 @@ struct recidia_misc_settings {
 
 // Global settings/data because it's used EVERYWHERE, passing is stupid
 struct recidia_settings_struct {
+    int sync;
     struct recidia_data_settings data;
     struct recidia_design_settings design;
     struct recidia_misc_settings misc;
@@ -148,6 +152,7 @@ struct recidia_data_struct {
 };
 extern struct recidia_data_struct recidia_data;
 
+int get_setting_change(char key);
 
 void change_setting_by_key(char key);
 
