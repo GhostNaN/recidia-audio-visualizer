@@ -32,7 +32,7 @@ The Bad:
 - qt5-base
   - GUI support
 - vulkan-driver
-  - Visualizer render
+  - Visualizer renderer
   
 #### Must have at least one:
 - portaudio(optional)
