@@ -116,8 +116,11 @@ SettingsTabWidget::SettingsTabWidget() {
     } );
     dataTabLayout->addWidget(audioBufferSizeSlider, 5, 1);
 
+    // Hack to keep it looking nice
+    QVBoxLayout *columnTwoDataTabLayout = new QVBoxLayout;
+
     QLabel *pollRateLabel = new QLabel("Poll Rate");
-    dataTabLayout->addWidget(pollRateLabel, 0, 2, 1, 2);
+    columnTwoDataTabLayout->addWidget(pollRateLabel);
     pollRateSpinBox = new QSpinBox();
     pollRateSpinBox->setRange(1, recidia_settings.data.POLL_RATE.MAX);
     pollRateSpinBox->setValue(recidia_settings.data.poll_rate);
@@ -126,10 +129,10 @@ SettingsTabWidget::SettingsTabWidget() {
     [=]() {
         recidia_settings.data.poll_rate = pollRateSpinBox->value();
     } );
-    dataTabLayout->addWidget(pollRateSpinBox, 1, 2, 3, 2, Qt::AlignTop);
+    columnTwoDataTabLayout->addWidget(pollRateSpinBox);
 
     QLabel *statsLabel = new QLabel("Stats");
-    dataTabLayout->addWidget(statsLabel, 2, 2, 4, 2);
+    columnTwoDataTabLayout->addWidget(statsLabel);
     statsButton = new QPushButton();
     if (recidia_settings.misc.stats == 0)
         statsButton->setText("Disabled");
@@ -146,7 +149,9 @@ SettingsTabWidget::SettingsTabWidget() {
             statsButton->setText("Disabled");
         }
     } );
-    dataTabLayout->addWidget(statsButton, 3, 2, 5, 2, Qt::AlignBottom);
+    columnTwoDataTabLayout->addWidget(statsButton);
+
+    dataTabLayout->addLayout(columnTwoDataTabLayout, 0, 2, 5, 2);
 
 
     QWidget *designTab = new QWidget();

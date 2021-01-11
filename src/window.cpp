@@ -43,16 +43,13 @@ StatsWidget::StatsWidget() {
     this->setLayout(layout);
 
     plotsCountLabel = new QLabel("Plots: " + QString::number(recidia_data.plots_count));
-    layout->addWidget(plotsCountLabel);
-    layout->addStretch(1);
+    layout->addWidget(plotsCountLabel, 1);
 
     latencyLabel = new QLabel("Latency: " + QString::number(0) + "ms");
-    layout->addWidget(latencyLabel);
-    layout->addStretch(1);
+    layout->addWidget(latencyLabel, 1);
 
     fpsLabel = new QLabel("FPS: " + QString::number(0));
-    layout->addWidget(fpsLabel);
-    layout->addStretch(1);
+    layout->addWidget(fpsLabel, 1);
 
     QLabel *intervalLabel = new QLabel("Interval:");
     layout->addWidget(intervalLabel);
