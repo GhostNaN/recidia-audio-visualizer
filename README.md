@@ -33,7 +33,7 @@ The Bad:
 #### Must have at least one:
 - portaudio(optional)
   - Audio data collection (Input Only)
-- pulseaudio(optional)
+- pulseaudio/pipewire-pulse(optional)
   - Audio data collection
 
 ## Installers
