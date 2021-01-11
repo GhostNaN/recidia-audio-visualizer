@@ -20,7 +20,7 @@ The Bad:
 - gsl
   - Linear algebra
 - glm
-  - Vulkan linear algebra
+  - Graphics linear algebra
 - fftw 
   - Fast Fourier Transform
 - ncurses
@@ -29,6 +29,10 @@ The Bad:
   - Config file manager
 - shaderc
   - Runtime shader compilation
+- qt5-base
+  - GUI support
+- vulkan-driver
+  - Visualizer render
   
 #### Must have at least one:
 - portaudio(optional)
