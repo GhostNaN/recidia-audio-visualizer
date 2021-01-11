@@ -9,11 +9,72 @@
 #include <QListWidget>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QTimer>
+#include <QHideEvent>
+#include <QShowEvent>
 
 #include <qt_window.h>
 #include <recidia.h>
 
 using namespace std;
+
+void StatsWidget::updateStats() {
+    plotsCountLabel->setText("Plots: " + QString::number(recidia_data.plots_count));
+    latencyLabel->setText("Latency: " + QString::number(recidia_data.latency, 'f', 1) + "ms");
+    uint fps = (1000 / (recidia_data.frame_time / 1000)) + 0.5;
+    fpsLabel->setText("FPS: " + QString::number(fps));
+}
+
+void StatsWidget::hideEvent(QHideEvent *event) {
+    (void) event;
+    timer->stop();
+}
+
+void StatsWidget::showEvent(QShowEvent *event) {
+    (void) event;
+    timer->start();
+}
+
+StatsWidget::StatsWidget() {
+    // Make it not transparent
+    this->setStyleSheet("background: palette(base)");
+
+    QHBoxLayout *layout = new QHBoxLayout;
+    this->setLayout(layout);
+
+    plotsCountLabel = new QLabel("Plots: " + QString::number(recidia_data.plots_count));
+    layout->addWidget(plotsCountLabel);
+    layout->addStretch(1);
+
+    latencyLabel = new QLabel("Latency: " + QString::number(0) + "ms");
+    layout->addWidget(latencyLabel);
+    layout->addStretch(1);
+
+    fpsLabel = new QLabel("FPS: " + QString::number(0));
+    layout->addWidget(fpsLabel);
+    layout->addStretch(1);
+
+    QLabel *intervalLabel = new QLabel("Interval:");
+    layout->addWidget(intervalLabel);
+    QSpinBox *intervalSpinBox = new QSpinBox;
+    intervalSpinBox->setRange(1, 1000);
+    intervalSpinBox->setValue(100);
+    intervalSpinBox->setSuffix("ms");
+    QObject::connect(intervalSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+    [=]() {
+        timer->setInterval(intervalSpinBox->value());
+    } );
+    layout->addWidget(intervalSpinBox);
+
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &StatsWidget::updateStats);
+    timer->setInterval(100);
+
+    if(!recidia_settings.misc.stats)
+        this->hide();
+    else
+        timer->start();
+}
 
 MainWindow::MainWindow(VulkanWindow *private_vulkan_window) {
     this->setAttribute(Qt::WA_TranslucentBackground);
@@ -22,6 +83,10 @@ MainWindow::MainWindow(VulkanWindow *private_vulkan_window) {
 
     settings_tabs = new SettingsTabWidget;
     vulkan_window = private_vulkan_window;
+    stats_bar = new StatsWidget;
+
+    settings_tabs->main_window = this;
+    vulkan_window->main_window = this;
 
     QWidget *wrapper = QWidget::createWindowContainer(vulkan_window);
     // Forward children events to main window
@@ -32,6 +97,7 @@ MainWindow::MainWindow(VulkanWindow *private_vulkan_window) {
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->addWidget(settings_tabs);
     mainLayout->addWidget(wrapper, 1);
+    mainLayout->addWidget(stats_bar);
 
     QWidget *container = new QWidget();
     container->setLayout(mainLayout);
@@ -48,16 +114,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         return true;
     }
     return false;
-}
-
-//void MainWindow::showEvent(QShowEvent *event) {
-//    (void) event;
-//    this->centralWidget()->resize(1000, 501);
-//}
-
-void MainWindow::resizeEvent(QResizeEvent *event) {
-    recidia_data.width = event->size().width();
-    recidia_data.height = event->size().height();
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event) {
@@ -120,8 +176,6 @@ int init_gui(int argc, char *argv[]) {
 
     mainWindow.resize(1000, 500);
     mainWindow.show();
-
-    vulkanWindow->main_window = &mainWindow;
 
     return app.exec();
 }

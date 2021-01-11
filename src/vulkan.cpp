@@ -406,8 +406,8 @@ void VulkanRenderer::startNextFrame() {
     VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
 
     recidia_data.width = vulkan_window->width() * recidia_settings.design.draw_width;
-    recidia_data.height = vulkan_window->height();
-    uint plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
+    recidia_data.height = vulkan_window->height() * recidia_settings.design.draw_height;
+    recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) + 1;
 
     // Background Color
     float alpha = (float) recidia_settings.design.back_color.alpha / 255;
@@ -429,10 +429,10 @@ void VulkanRenderer::startNextFrame() {
     blue = get_linear_color(recidia_settings.design.main_color.blue) * alpha;
 
     // Finalize plots height
-    float finalPlots[plotsCount];
+    float finalPlots[recidia_data.plots_count];
 
     float relHeight = 2.0;
-    for (uint i=0; i < plotsCount; i++ ) {
+    for (uint i=0; i < recidia_data.plots_count; i++ ) {
 
         // Scale plots
         finalPlots[i] = (recidia_data.plots[i] / recidia_settings.data.height_cap) * relHeight;
@@ -454,7 +454,7 @@ void VulkanRenderer::startNextFrame() {
 
     float xPlace = recidia_settings.design.draw_x;
     float xPos, yPos;
-    for(uint i=0; i < plotsCount; i++) {
+    for(uint i=0; i < recidia_data.plots_count; i++) {
 
         for(uint j=0; j < BAR_VERTICES.size(); j++) {
             auto vertex = BAR_VERTICES[j];
@@ -466,7 +466,7 @@ void VulkanRenderer::startNextFrame() {
                 xPos += plotSize;
             }
             if (j > 1) {
-                if (j == 2 && i < plotsCount-1 && recidia_settings.design.draw_mode == 1)
+                if (j == 2 && i < recidia_data.plots_count-1 && recidia_settings.design.draw_mode == 1)
                     yPos += finalPlots[i+1];
                 else
                     yPos += finalPlots[i];
@@ -538,6 +538,7 @@ void VulkanRenderer::startNextFrame() {
     dev_funct->vkCmdEndRenderPass(cmdBuf);
 
     vulkan_window->frameReady();
+    recidia_data.latency = (utime_now() - recidia_data.time) / 1000;
 
     // Sleep for fps cap
     double frameTime = 0;
@@ -548,6 +549,7 @@ void VulkanRenderer::startNextFrame() {
 
         frameTime = utime_now() - last_frame_time;
     }
+    recidia_data.frame_time = utime_now() - last_frame_time;
     last_frame_time = utime_now();
 
     vulkan_window->requestUpdate(); // render continuously, throttled by the presentation rate

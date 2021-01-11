@@ -193,7 +193,7 @@ void init_processing(recidia_audio_data *audio_data) {
     // Copy of some settings
     uint audioBufferSize = recidia_settings.data.audio_buffer_size;
     uint interp = recidia_settings.data.interp;
-    uint plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
+    uint plotsCount = recidia_data.plots_count;
     float savgolRelativeWindowSize = recidia_settings.data.savgol_filter.window_size;
     uint savgolWindowSize = savgolRelativeWindowSize * plotsCount;
 
@@ -226,8 +226,8 @@ void init_processing(recidia_audio_data *audio_data) {
 
             interpIndex = 0;
         }
-        if (plotsCount != recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) {
-            plotsCount = recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width);
+        if (plotsCount != recidia_data.plots_count) {
+            plotsCount = recidia_data.plots_count;
 
             if (savgolRelativeWindowSize) {
                 savgolWindowSize = savgolRelativeWindowSize * plotsCount;

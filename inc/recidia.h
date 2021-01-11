@@ -137,7 +137,6 @@ struct recidia_misc_settings {
 
 // Global settings/data because it's used EVERYWHERE, passing is stupid
 struct recidia_settings_struct {
-    int sync;
     struct recidia_data_settings data;
     struct recidia_design_settings design;
     struct recidia_misc_settings misc;
@@ -147,7 +146,9 @@ extern struct recidia_settings_struct recidia_settings;
 struct recidia_data_struct {    
     unsigned int width, height;
     double time;
+    float latency;
     float frame_time;
+    unsigned int plots_count;
     float *plots;
 };
 extern struct recidia_data_struct recidia_data;

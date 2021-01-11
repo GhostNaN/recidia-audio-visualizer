@@ -20,6 +20,7 @@ SettingsTabWidget::SettingsTabWidget() {
 
     QWidget *dataTab = new QWidget();
     this->addTab(dataTab, "Data");
+
     QGridLayout *dataTabLayout = new QGridLayout();
     dataTab->setLayout(dataTabLayout);
 
@@ -121,16 +122,31 @@ SettingsTabWidget::SettingsTabWidget() {
     pollRateSpinBox->setRange(1, recidia_settings.data.POLL_RATE.MAX);
     pollRateSpinBox->setValue(recidia_settings.data.poll_rate);
     pollRateSpinBox->setSuffix("ms");
-    QObject::connect(pollRateSpinBox, &QSpinBox::editingFinished,
+    QObject::connect(pollRateSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
     [=]() {
         recidia_settings.data.poll_rate = pollRateSpinBox->value();
     } );
-    dataTabLayout->addWidget(pollRateSpinBox, 1, 2, 2, 1, Qt::AlignTop);
+    dataTabLayout->addWidget(pollRateSpinBox, 1, 2, 3, 2, Qt::AlignTop);
 
-    QLabel *hideSettingsLabel = new QLabel("Press \"Alt\"\n"
-                                            "to hide");
-    hideSettingsLabel->setStyleSheet("font-style: italic");
-    dataTabLayout->addWidget(hideSettingsLabel, 4, 2, 5, 2);
+    QLabel *statsLabel = new QLabel("Stats");
+    dataTabLayout->addWidget(statsLabel, 2, 2, 4, 2);
+    statsButton = new QPushButton();
+    if (recidia_settings.misc.stats == 0)
+        statsButton->setText("Disabled");
+    else if (recidia_settings.misc.stats == 1)
+        statsButton->setText("Enabled");
+    QObject::connect(statsButton, &QPushButton::pressed,
+    [=]() {
+        if (statsButton->text() == "Disabled") {
+            main_window->stats_bar->show();
+            statsButton->setText("Enabled");
+        }
+        else if (statsButton->text() == "Enabled") {
+            main_window->stats_bar->hide();
+            statsButton->setText("Disabled");
+        }
+    } );
+    dataTabLayout->addWidget(statsButton, 3, 2, 5, 2, Qt::AlignBottom);
 
 
     QWidget *designTab = new QWidget();
@@ -142,17 +158,18 @@ SettingsTabWidget::SettingsTabWidget() {
     QGridLayout *dimenGridLayout = new QGridLayout();
     dimenGrid->setLayout(dimenGridLayout);
 
-    QLabel *drawGridLabel = new QLabel("Draw Dimentions");
+    QLabel *drawGridLabel = new QLabel("Draw Dimensions");
     drawGridLabel->setAlignment(Qt::AlignHCenter);
     dimenGridLayout->addWidget(drawGridLabel, 0, 0, 1, 3);
 
     QLabel *drawXposLabel = new QLabel("X Pos");
     dimenGridLayout->addWidget(drawXposLabel, 1, 0);
     QDoubleSpinBox *drawXposSpinBox = new QDoubleSpinBox();
+    drawXposSpinBox->setDecimals(3);
     drawXposSpinBox->setRange(-1.0, 1.0);
     drawXposSpinBox->setValue(recidia_settings.design.draw_x);
     drawXposSpinBox->setSingleStep(0.01);
-    QObject::connect(drawXposSpinBox, &QDoubleSpinBox::editingFinished,
+    QObject::connect(drawXposSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
     [=]() {
         recidia_settings.design.draw_x = drawXposSpinBox->value();
     } );
@@ -161,10 +178,11 @@ SettingsTabWidget::SettingsTabWidget() {
     QLabel *drawYposLabel = new QLabel("Y Pos");
     dimenGridLayout->addWidget(drawYposLabel, 1, 1);
     QDoubleSpinBox *drawYposSpinBox = new QDoubleSpinBox();
+    drawYposSpinBox->setDecimals(3);
     drawYposSpinBox->setRange(-1.0, 1.0);
     drawYposSpinBox->setValue(recidia_settings.design.draw_y);
     drawYposSpinBox->setSingleStep(0.01);
-    QObject::connect(drawYposSpinBox, &QDoubleSpinBox::editingFinished,
+    QObject::connect(drawYposSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
     [=]() {
         recidia_settings.design.draw_y = drawYposSpinBox->value();
     } );
@@ -173,10 +191,11 @@ SettingsTabWidget::SettingsTabWidget() {
     QLabel *drawWidthLabel = new QLabel("Width");
     dimenGridLayout->addWidget(drawWidthLabel, 3, 0);
     QDoubleSpinBox *drawWidthSpinBox = new QDoubleSpinBox();
+    drawWidthSpinBox->setDecimals(3);
     drawWidthSpinBox->setRange(0.0, 1.0);
     drawWidthSpinBox->setValue(recidia_settings.design.draw_width);
     drawWidthSpinBox->setSingleStep(0.01);
-    QObject::connect(drawWidthSpinBox, &QDoubleSpinBox::editingFinished,
+    QObject::connect(drawWidthSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
     [=]() {
         recidia_settings.design.draw_width = drawWidthSpinBox->value();
     } );
@@ -185,10 +204,11 @@ SettingsTabWidget::SettingsTabWidget() {
     QLabel *drawHeightLabel = new QLabel("Height");
     dimenGridLayout->addWidget(drawHeightLabel, 3, 1);
     QDoubleSpinBox *drawHeightSpinBox = new QDoubleSpinBox();
+    drawHeightSpinBox->setDecimals(3);
     drawHeightSpinBox->setRange(0.0, 1.0);
     drawHeightSpinBox->setValue(recidia_settings.design.draw_height);
     drawHeightSpinBox->setSingleStep(0.01);
-    QObject::connect(drawHeightSpinBox, &QDoubleSpinBox::editingFinished,
+    QObject::connect(drawHeightSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
     [=]() {
         recidia_settings.design.draw_height = drawHeightSpinBox->value();
     } );
@@ -246,7 +266,7 @@ SettingsTabWidget::SettingsTabWidget() {
     fpsCapSpinBox->setRange(1, recidia_settings.design.FPS_CAP.MAX);
     fpsCapSpinBox->setValue(recidia_settings.design.fps_cap);
     fpsCapSpinBox->setSuffix(" FPS");
-    QObject::connect(fpsCapSpinBox, &QSpinBox::editingFinished,
+    QObject::connect(fpsCapSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
     [=]() {
         recidia_settings.design.fps_cap = fpsCapSpinBox->value();
     } );
@@ -353,6 +373,19 @@ void SettingsTabWidget::change_setting(int change) {
             audioBufferSizeSlider->setValue(audioBufferSizeSlider->value() + 1);
             break;
 
+        case POLL_RATE_DECREASE:
+            pollRateSpinBox->setValue(pollRateSpinBox->value() - 1);
+            pollRateSpinBox->editingFinished();
+            break;
+        case POLL_RATE_INCREASE:
+            pollRateSpinBox->setValue(pollRateSpinBox->value() + 1);
+            pollRateSpinBox->editingFinished();
+            break;
+
+        case STATS_TOGGLE:
+            statsButton->pressed();
+            break;
+
 
         case PLOT_WIDTH_DECREASE:
             plotWidthSlider->setValue(plotWidthSlider->value() - 1);
@@ -372,15 +405,6 @@ void SettingsTabWidget::change_setting(int change) {
             drawModeButton->pressed();
             break;
 
-        case POLL_RATE_DECREASE:
-            pollRateSpinBox->setValue(pollRateSpinBox->value() - 1);
-            pollRateSpinBox->editingFinished();
-            break;
-        case POLL_RATE_INCREASE:
-            pollRateSpinBox->setValue(pollRateSpinBox->value() + 1);
-            pollRateSpinBox->editingFinished();
-            break;
-
         case FPS_CAP_DECREASE:
             fpsCapSpinBox->setValue(fpsCapSpinBox->value() - 1);
             fpsCapSpinBox->editingFinished();
@@ -389,12 +413,5 @@ void SettingsTabWidget::change_setting(int change) {
             fpsCapSpinBox->setValue(fpsCapSpinBox->value() + 1);
             fpsCapSpinBox->editingFinished();
             break;
-
-//        case STATS_TOGGLE:
-//            if (recidia_settings.misc.stats)
-//                recidia_settings.misc.stats = 0;
-//            else
-//               recidia_settings.misc.stats = 1;
-//            break;
     }
 }

@@ -5,6 +5,8 @@
 #include <QPushButton>
 #include <QSlider>
 #include <QSpinBox>
+#include <QLabel>
+#include <QTimer>
 
 #include <string>
 #include <vector>
@@ -24,6 +26,7 @@ class SettingsTabWidget : public QTabWidget {
     
 public:
     explicit SettingsTabWidget();
+    MainWindow *main_window;
     // Turns keys to a change
     void change_setting(char key);
     void change_setting(int change);
@@ -34,6 +37,7 @@ private:
     QSlider *interpolationSlider;
     QSlider *audioBufferSizeSlider;
     QSpinBox *pollRateSpinBox;
+    QPushButton *statsButton;
     
     QSlider *plotWidthSlider;
     QSlider *gapWidthSlider;
@@ -83,6 +87,26 @@ private:
     float m_rotation = 0.0f;
 };
 
+class StatsWidget : public QWidget {
+    
+public:
+    explicit StatsWidget();
+    
+public slots:
+    void updateStats();
+    
+private:
+    QTimer *timer;
+    
+    QLabel *plotsCountLabel;
+    QLabel *latencyLabel;
+    QLabel *fpsLabel;
+
+protected:
+    void hideEvent(QHideEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+};
+
 
 class MainWindow : public QMainWindow {
     
@@ -91,6 +115,7 @@ public:
     
     VulkanWindow *vulkan_window;
     SettingsTabWidget *settings_tabs;
+    StatsWidget *stats_bar;
     
 private:
     bool is_windowless = 0;
@@ -98,8 +123,6 @@ private:
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
     
-    //void showEvent(QShowEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 };

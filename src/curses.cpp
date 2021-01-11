@@ -37,7 +37,7 @@ void init_curses() {
     float savgolWindowSize = recidia_settings.data.savgol_filter.window_size;
     uint interp = recidia_settings.data.interp;
     uint audioBufferSize = recidia_settings.data.audio_buffer_size;
-    uint plotsCount = recidia_data.width / (plotWidth + gapWidth);
+    uint plotsCount = recidia_data.plots_count;
     uint fps = recidia_settings.design.fps_cap;
     uint poll_rate = recidia_settings.data.poll_rate;
 
@@ -48,6 +48,7 @@ void init_curses() {
     while (1) {
         u_int64_t timerStart = utime_now();
         getmaxyx(stdscr, recidia_data.height, recidia_data.width);
+        recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) + 1;
 
         // Track setting changes
         if (plotHeightCap != recidia_settings.data.height_cap) {
@@ -107,8 +108,8 @@ void init_curses() {
             timeOfDisplayed = 0;
             settingToDisplay = "FPS Cap " + to_string(fps);
         }
-        if (plotsCount != (recidia_data.width / (plotWidth + gapWidth))) {
-            plotsCount = recidia_data.width / (plotWidth + gapWidth);
+        if (plotsCount != recidia_data.plots_count) {
+            plotsCount = recidia_data.plots_count;
 
             clear();
         }
@@ -128,9 +129,9 @@ void init_curses() {
         // Print plots/bars
         string blockList[] = {"\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587"};
 
-        for (unsigned int y = 0; y < recidia_data.height; y++) {
+        for (uint y = 0; y < recidia_data.height; y++) {
 
-            unsigned int limit = ceiling - (y * slices);
+            uint limit = ceiling - (y * slices);
             string printBarLine;
 
             for (i=0; i < plotsCount; i++) {
