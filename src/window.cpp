@@ -8,70 +8,12 @@
 #include <QDialog>
 #include <QListWidget>
 #include <QVBoxLayout>
-#include <QLabel>
-#include <QTimer>
-#include <QHideEvent>
-#include <QShowEvent>
 
 #include <qt_window.h>
 #include <recidia.h>
 
 using namespace std;
 
-void StatsWidget::updateStats() {
-    plotsCountLabel->setText("Plots: " + QString::number(recidia_data.plots_count));
-    latencyLabel->setText("Latency: " + QString::number(recidia_data.latency, 'f', 1) + "ms");
-    uint fps = (1000 / (recidia_data.frame_time / 1000)) + 0.5;
-    fpsLabel->setText("FPS: " + QString::number(fps));
-}
-
-void StatsWidget::hideEvent(QHideEvent *event) {
-    (void) event;
-    timer->stop();
-}
-
-void StatsWidget::showEvent(QShowEvent *event) {
-    (void) event;
-    timer->start();
-}
-
-StatsWidget::StatsWidget() {
-    // Make it not transparent
-    this->setStyleSheet("background: palette(base)");
-
-    QHBoxLayout *layout = new QHBoxLayout;
-    this->setLayout(layout);
-
-    plotsCountLabel = new QLabel("Plots: " + QString::number(recidia_data.plots_count));
-    layout->addWidget(plotsCountLabel, 1);
-
-    latencyLabel = new QLabel("Latency: " + QString::number(0) + "ms");
-    layout->addWidget(latencyLabel, 1);
-
-    fpsLabel = new QLabel("FPS: " + QString::number(0));
-    layout->addWidget(fpsLabel, 1);
-
-    QLabel *intervalLabel = new QLabel("Interval:");
-    layout->addWidget(intervalLabel);
-    QSpinBox *intervalSpinBox = new QSpinBox;
-    intervalSpinBox->setRange(1, 1000);
-    intervalSpinBox->setValue(100);
-    intervalSpinBox->setSuffix("ms");
-    QObject::connect(intervalSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-    [=]() {
-        timer->setInterval(intervalSpinBox->value());
-    } );
-    layout->addWidget(intervalSpinBox);
-
-    timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &StatsWidget::updateStats);
-    timer->setInterval(100);
-
-    if(!recidia_settings.misc.stats)
-        this->hide();
-    else
-        timer->start();
-}
 
 MainWindow::MainWindow(VulkanWindow *private_vulkan_window) {
     this->setAttribute(Qt::WA_TranslucentBackground);
@@ -96,7 +38,7 @@ MainWindow::MainWindow(VulkanWindow *private_vulkan_window) {
     mainLayout->addWidget(wrapper, 1);
     mainLayout->addWidget(stats_bar);
 
-    QWidget *container = new QWidget();
+    QWidget *container = new QWidget(this);
     container->setLayout(mainLayout);
 
     this->setCentralWidget(container);
@@ -182,10 +124,10 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
     int argc = 1;
     QApplication app(argc, const_cast<char **>(argv));
 
-    QDialog *dialog = new QDialog();
+    QDialog *dialog = new QDialog;
 
-    QListWidget *pulseList = new QListWidget();
-    QListWidget *portList = new QListWidget();
+    QListWidget *pulseList = new QListWidget(dialog);
+    QListWidget *portList = new QListWidget(dialog);
 
     QObject::connect(pulseList, &QListWidget::currentRowChanged,
     [=]() { portList->clearSelection(); } );
@@ -193,14 +135,15 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
     QObject::connect(portList, &QListWidget::currentRowChanged,
     [=]() { pulseList->clearSelection(); } );
 
-    QVBoxLayout *layout = new QVBoxLayout();
+    QVBoxLayout *layout = new QVBoxLayout;
+    dialog->setLayout(layout);
 
     uint i = 0;
     int d = 0;
 
     if (pulse_indexes.size()) {
         d = 1;
-        QLabel *pulseLabel = new QLabel("PulseAudio Devices");
+        QLabel *pulseLabel = new QLabel("PulseAudio Devices", dialog);
         pulseLabel->setAlignment(Qt::AlignHCenter);
         layout->addWidget(pulseLabel);
 
@@ -213,7 +156,7 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
     }
 
     if (port_indexes.size()) {
-        QLabel *portLabel = new QLabel("PortAudio Devices");
+        QLabel *portLabel = new QLabel("PortAudio Devices", dialog);
         portLabel->setAlignment(Qt::AlignHCenter);
         layout->addWidget(portLabel);
 
@@ -223,21 +166,20 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
         portList->addItem(QString::fromStdString(devices[i+j]));
     }
 
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
 
-    QPushButton *okButton = new QPushButton("Ok");
+    QPushButton *okButton = new QPushButton("Ok", dialog);
     QObject::connect(okButton, &QPushButton::released,
     [=]() { dialog->done(0); } );
     buttonLayout->addWidget(okButton);
 
-    QPushButton *cancelButton = new QPushButton("Cancel");
+    QPushButton *cancelButton = new QPushButton("Cancel", dialog);
     QObject::connect(cancelButton, &QPushButton::released,
     [=]() { exit(0); } );
     buttonLayout->addWidget(cancelButton);
 
     layout->addLayout(buttonLayout);
 
-    dialog->setLayout(layout);
     dialog->resize(600, 450);
     dialog->exec();
 

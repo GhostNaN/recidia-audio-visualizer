@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <string>
 #include <locale.h>
-#include <math.h>
 
 #include <ncurses.h>
 
@@ -54,13 +53,8 @@ void init_curses() {
         if (plotHeightCap != recidia_settings.data.height_cap) {
             plotHeightCap = recidia_settings.data.height_cap;
 
-            float db  = 20 * log10(plotHeightCap / 32768);
-            char dbCharArrayt[10];
-            sprintf(dbCharArrayt, "%.1f", db);
-            string dbString(dbCharArrayt);
-
             timeOfDisplayed = 0;
-            settingToDisplay = "Volume Cap " + dbString + "db";
+            settingToDisplay = "Height Cap " + to_string((int) (plotHeightCap+0.5));
         }
         if (plotWidth != recidia_settings.design.plot_width) {
             plotWidth = recidia_settings.design.plot_width;
@@ -82,7 +76,7 @@ void init_curses() {
             savgolWindowSize = recidia_settings.data.savgol_filter.window_size * 100;
 
             timeOfDisplayed = 0;
-            settingToDisplay = "Savgol Window " + to_string((int) round(savgolWindowSize)) + "%";
+            settingToDisplay = "Savgol Window " + to_string((int) (savgolWindowSize+0.5)) + "%";
         }
         if (interp != recidia_settings.data.interp) {
             interp = recidia_settings.data.interp;
@@ -177,7 +171,7 @@ void init_curses() {
         }
 
         // Draw stats
-        if (recidia_settings.misc.stats) {
+        if (recidia_settings.data.stats) {
             if (frameCount % ((recidia_settings.design.fps_cap / 10) + 1) == 0) { // Slow down stats
                 latency = utime_now();
                 latency = (latency - recidia_data.time) / 1000;

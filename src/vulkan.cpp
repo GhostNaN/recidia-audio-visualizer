@@ -402,31 +402,12 @@ float get_linear_color(uint srgb) {
         return pow((srgbF+0.055) / 1.055, 2.4);
 }
 
-void VulkanRenderer::startNextFrame() {
-    VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
-
-    recidia_data.width = vulkan_window->width() * recidia_settings.design.draw_width;
-    recidia_data.height = vulkan_window->height() * recidia_settings.design.draw_height;
-    recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) + 1;
-
-    // Background Color
-    float alpha = (float) recidia_settings.design.back_color.alpha / 255;
-    float red = get_linear_color(recidia_settings.design.back_color.red) * alpha;
-    float green = get_linear_color(recidia_settings.design.back_color.green) * alpha;
-    float blue = get_linear_color(recidia_settings.design.back_color.blue) * alpha;
-
-    VkClearColorValue clearColor = {{red, green, blue, alpha}};
-    VkClearDepthStencilValue clearDS = { 1, 0 };
-    VkClearValue clearValues[3]{};
-
-    clearValues[0].color = clearValues[2].color = clearColor;
-    clearValues[1].depthStencil = clearDS;
-
+void create_plots() {
     // Create bars
-    alpha = (float) recidia_settings.design.main_color.alpha / 255;
-    red = get_linear_color(recidia_settings.design.main_color.red) * alpha;
-    green = get_linear_color(recidia_settings.design.main_color.green) * alpha;
-    blue = get_linear_color(recidia_settings.design.main_color.blue) * alpha;
+    float alpha = (float) recidia_settings.design.main_color.alpha / 255;
+    float red = get_linear_color(recidia_settings.design.main_color.red) * alpha;
+    float green = get_linear_color(recidia_settings.design.main_color.green) * alpha;
+    float blue = get_linear_color(recidia_settings.design.main_color.blue) * alpha;
 
     // Finalize plots height
     float finalPlots[recidia_data.plots_count];
@@ -443,7 +424,6 @@ void VulkanRenderer::startNextFrame() {
             finalPlots[i] = recidia_settings.design.min_plot_height * relHeight;
     }
 
-    // Create Bars
     vector<Vertex> plotsVertexes;
     vector<uint32_t> plotsIndexes;
 
@@ -495,6 +475,27 @@ void VulkanRenderer::startNextFrame() {
     dev_funct->vkMapMemory(vulkan_dev, index_buffer_mem, 0, INDEX_BUFFER_SIZE, 0, &data);
         memcpy(data, plotsIndexes.data(), plotsIndexes.size() * sizeof(plotsIndexes.data()[0]));
     dev_funct->vkUnmapMemory(vulkan_dev, index_buffer_mem);
+}
+
+void VulkanRenderer::startNextFrame() {
+    VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
+
+    recidia_data.width = vulkan_window->width() * recidia_settings.design.draw_width;
+    recidia_data.height = vulkan_window->height() * recidia_settings.design.draw_height;
+    recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) + 1;
+
+    // Background Color
+    float alpha = (float) recidia_settings.design.back_color.alpha / 255;
+    float red = get_linear_color(recidia_settings.design.back_color.red) * alpha;
+    float green = get_linear_color(recidia_settings.design.back_color.green) * alpha;
+    float blue = get_linear_color(recidia_settings.design.back_color.blue) * alpha;
+
+    VkClearColorValue clearColor = {{red, green, blue, alpha}};
+    VkClearDepthStencilValue clearDS = { 1, 0 };
+    VkClearValue clearValues[3]{};
+
+    clearValues[0].color = clearValues[2].color = clearColor;
+    clearValues[1].depthStencil = clearDS;
 
     // Bind buffers
     VkBuffer vertexBuffers[] = {vertex_buffer};
@@ -532,8 +533,12 @@ void VulkanRenderer::startNextFrame() {
     VkCommandBuffer cmdBuf = vulkan_window->currentCommandBuffer();
     dev_funct->vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+
+    create_plots();
+
     // DRAW FINALLY
-    dev_funct->vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(plotsIndexes.size()), 1, 0, 0, 0);
+    uint32_t indices_count = recidia_data.plots_count * BAR_INDICES.size();
+    dev_funct->vkCmdDrawIndexed(commandBuffer, indices_count, 1, 0, 0, 0);
 
     dev_funct->vkCmdEndRenderPass(cmdBuf);
 

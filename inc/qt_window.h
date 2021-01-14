@@ -43,6 +43,21 @@ private:
     QSlider *gapWidthSlider;
     QPushButton *drawModeButton;
     QSpinBox *fpsCapSpinBox;
+    // Prevent multiple dialogs
+    bool main_color_dialog_up = false;
+    bool back_color_dialog_up = false;
+};
+
+class VerticalLabel : public QLabel
+{
+
+public:
+    explicit VerticalLabel(const QString &text, QWidget *parent=0);
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 };
 
 
@@ -65,7 +80,6 @@ public:
     void initSwapChainResources() override;
     void releaseSwapChainResources() override;
     void releaseResources() override;
-
     void startNextFrame() override;
 
 private:

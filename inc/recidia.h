@@ -104,6 +104,8 @@ struct recidia_data_settings {
     
     float poll_rate;
     recidia_const_setting<float> POLL_RATE;
+    
+    int stats;
 };
 
 struct rgba_color {
@@ -131,15 +133,10 @@ struct recidia_design_settings {
     rgba_color back_color;
 };
 
-struct recidia_misc_settings {
-    int stats;
-};
-
 // Global settings/data because it's used EVERYWHERE, passing is stupid
 struct recidia_settings_struct {
     struct recidia_data_settings data;
     struct recidia_design_settings design;
-    struct recidia_misc_settings misc;
 };
 extern struct recidia_settings_struct recidia_settings;
 

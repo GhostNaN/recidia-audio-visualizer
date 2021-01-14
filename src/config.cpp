@@ -115,10 +115,10 @@ void change_setting_by_key(char key) {
             break;
 
         case STATS_TOGGLE:
-            if (recidia_settings.misc.stats)
-                recidia_settings.misc.stats = 0;
+            if (recidia_settings.data.stats)
+                recidia_settings.data.stats = 0;
             else
-               recidia_settings.misc.stats = 1;
+               recidia_settings.data.stats = 1;
             break;
     }
 }
@@ -293,7 +293,7 @@ void get_settings(int GUI) {
                     break;
 
                 case str2int("Stats"):
-                    confSetting.lookupValue("enabled", recidia_settings.misc.stats);
+                    confSetting.lookupValue("enabled", recidia_settings.data.stats);
                     set_const_key(confSetting, "toggle_key", STATS_TOGGLE);
                     break;
             }
