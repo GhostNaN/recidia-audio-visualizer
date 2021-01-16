@@ -2,33 +2,39 @@
 #define RECIDIA_H
 
 // Settings changes with keyboard
-const int PLOT_HEIGHT_CAP_DECREASE = 1;
-const int PLOT_HEIGHT_CAP_INCREASE = 2;
+enum setting_changes {
+    SETTINGS_MENU_TOGGLE = 1, // Start at 1
+    
+    FRAMELESS_TOGGLE,
+    
+    PLOT_HEIGHT_CAP_DECREASE,
+    PLOT_HEIGHT_CAP_INCREASE,
 
-const int PLOT_WIDTH_DECREASE = 3;
-const int PLOT_WIDTH_INCREASE = 4;
+    PLOT_WIDTH_DECREASE,
+    PLOT_WIDTH_INCREASE,
 
-const int GAP_WIDTH_DECREASE = 5;
-const int GAP_WIDTH_INCREASE = 6;
+    GAP_WIDTH_DECREASE,
+    GAP_WIDTH_INCREASE,
 
-const int SAVGOL_WINDOW_SIZE_DECREASE = 7;
-const int SAVGOL_WINDOW_SIZE_INCREASE = 8;
+    SAVGOL_WINDOW_SIZE_DECREASE,
+    SAVGOL_WINDOW_SIZE_INCREASE,
 
-const int INTERPOLATION_DECREASE = 9;
-const int INTERPOLATION_INCREASE = 10;
+    INTERPOLATION_DECREASE,
+    INTERPOLATION_INCREASE,
 
-const int AUDIO_BUFFER_SIZE_DECREASE = 11;
-const int AUDIO_BUFFER_SIZE_INCREASE = 12;
+    AUDIO_BUFFER_SIZE_DECREASE,
+    AUDIO_BUFFER_SIZE_INCREASE,
 
-const int POLL_RATE_DECREASE = 13;
-const int POLL_RATE_INCREASE = 14;
+    POLL_RATE_DECREASE,
+    POLL_RATE_INCREASE,
 
-const int FPS_CAP_DECREASE = 15;
-const int FPS_CAP_INCREASE = 16;
+    FPS_CAP_DECREASE,
+    FPS_CAP_INCREASE,
 
-const int STATS_TOGGLE = 17;
+    STATS_TOGGLE,
 
-const int DRAW_MODE_TOGGLE = 18;
+    DRAW_MODE_TOGGLE,
+};
 
 
 const int PULSE_INPUT = 0;
@@ -133,10 +139,16 @@ struct recidia_design_settings {
     rgba_color back_color;
 };
 
+struct recidia_misc_settings {
+    int settings_menu;
+    int frameless;
+};
+
 // Global settings/data because it's used EVERYWHERE, passing is stupid
 struct recidia_settings_struct {
     struct recidia_data_settings data;
     struct recidia_design_settings design;
+    struct recidia_misc_settings misc;
 };
 extern struct recidia_settings_struct recidia_settings;
 

@@ -188,6 +188,16 @@ void get_settings(int GUI) {
 
             switch (str2int(name.c_str())) {
 
+                case str2int("Settings Menu"):
+                    confSetting.lookupValue("default", recidia_settings.misc.settings_menu);
+                    set_const_key(confSetting, "toggle_key", SETTINGS_MENU_TOGGLE);
+                    break;
+
+                case str2int("Frameless"):
+                    confSetting.lookupValue("default", recidia_settings.misc.frameless);
+                    set_const_key(confSetting, "toggle_key", FRAMELESS_TOGGLE);
+                    break;
+
                 case str2int("Data Height Cap"):
                     confSetting.lookupValue("default", recidia_settings.data.height_cap);
                     set_const_setting(&recidia_settings.data.HEIGHT_CAP, confSetting);

@@ -131,12 +131,8 @@ public:
     SettingsTabWidget *settings_tabs;
     StatsWidget *stats_bar;
     
-private:
-    bool is_windowless = 0;
-    
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
-    
-    void keyReleaseEvent(QKeyEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 };

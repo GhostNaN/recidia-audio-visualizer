@@ -418,17 +418,45 @@ SettingsTabWidget::SettingsTabWidget() {
         recidia_settings.design.fps_cap = value;
     });
     designTabLayout->addWidget(fpsCapSpinBox, 4, 4);
+
+    if(!recidia_settings.misc.settings_menu)
+        this->hide();
 }
 
 // Overload to turn key to a change
 void SettingsTabWidget::change_setting(char key) {
     int change = get_setting_change(key);
-    SettingsTabWidget::change_setting(change);
+    if (change)
+        SettingsTabWidget::change_setting(change);
 }
 
 void SettingsTabWidget::change_setting(int change) {
 
     switch (change) {
+        case SETTINGS_MENU_TOGGLE:
+            if (recidia_settings.misc.settings_menu) {
+                recidia_settings.misc.settings_menu = 0;
+                this->hide();
+            }
+            else {
+                recidia_settings.misc.settings_menu = 1;
+                this->show();
+            }
+            break;
+
+        case FRAMELESS_TOGGLE:
+            if (recidia_settings.misc.frameless) {
+                this->main_window->setWindowFlag(Qt::FramelessWindowHint, false);
+                this->main_window->show();
+                recidia_settings.misc.frameless = false;
+            }
+            else {
+                this->main_window->setWindowFlag(Qt::FramelessWindowHint, true);
+                this->main_window->show();
+                recidia_settings.misc.frameless = true;
+            }
+            break;
+
         case PLOT_HEIGHT_CAP_DECREASE:
             heightCapSlider->setValue(3);
             break;

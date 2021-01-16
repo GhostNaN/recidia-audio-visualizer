@@ -48,38 +48,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     (void) obj;
 
     // children -> MainWindow
-    if (event->type() == QEvent::KeyRelease) {
+    if (event->type() == QEvent::KeyPress) {
         QCoreApplication::sendEvent(this, event);
         return true;
     }
     return false;
 }
 
-void MainWindow::keyReleaseEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Alt) {
-        if (settings_tabs->isHidden())
-            settings_tabs->show();
-        else
-            settings_tabs->hide();
-    }
-    else if (event->key() == Qt::Key_Shift) {
-        if (!is_windowless) {
-            this->setWindowFlag(Qt::FramelessWindowHint, true);
-            this->show();
-            is_windowless = true;
-        }
-        else {
-            this->setWindowFlag(Qt::FramelessWindowHint, false);
-            this->show();
-            is_windowless = false;
-        }
-    }
-    else {
-        string keyString = event->text().toStdString();
-        char key = keyString.c_str()[0];
+void MainWindow::keyPressEvent(QKeyEvent *event) {
 
-        settings_tabs->change_setting(key);
-    }
+    string keyString = event->text().toStdString();
+    char key = keyString.c_str()[0];
+    settings_tabs->change_setting(key);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
@@ -112,8 +92,10 @@ int init_gui(int argc, char *argv[]) {
 
     MainWindow mainWindow(vulkanWindow);
     mainWindow.setWindowTitle("ReCidia");
-
     mainWindow.resize(1000, 500);
+
+    if (recidia_settings.misc.frameless)
+        mainWindow.setWindowFlag(Qt::FramelessWindowHint, true);
     mainWindow.show();
 
     return app.exec();
