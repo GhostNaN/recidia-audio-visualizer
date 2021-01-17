@@ -435,11 +435,11 @@ void SettingsTabWidget::change_setting(int change) {
     switch (change) {
         case SETTINGS_MENU_TOGGLE:
             if (recidia_settings.misc.settings_menu) {
-                recidia_settings.misc.settings_menu = 0;
+                recidia_settings.misc.settings_menu = false;
                 this->hide();
             }
             else {
-                recidia_settings.misc.settings_menu = 1;
+                recidia_settings.misc.settings_menu = true;
                 this->show();
             }
             break;

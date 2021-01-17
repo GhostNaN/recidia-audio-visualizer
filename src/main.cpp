@@ -81,8 +81,6 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         d = 1; // d as in default
     }
     if (!GUI) {
-        system("clear");
-
         i = 0;  
         if (pulseHead) {
             printf("|||PulseAudio Devices|||\n");
@@ -170,15 +168,21 @@ int main(int argc, char **argv) {
 
     // Get settings
     recidia_settings = {};
-    get_settings(GUI);
+    init_recidia_settings(GUI);
+    get_config_settings(GUI);
 
     // Init Audio Collection
     recidia_audio_data audioData;
     audioData.frame_index = 0;
     audioData.buffer_size = &recidia_settings.data.audio_buffer_size;
     audioData.samples = (short*) calloc(recidia_settings.data.AUDIO_BUFFER_SIZE.MAX, sizeof(short));
-
     get_audio_device(&audioData, GUI);
+
+    // Apply limits to settings that needed audioData info
+    float maxFreq = audioData.sample_rate / 2;
+    limit_setting(recidia_settings.data.chart_guide.start_freq, 0.0, maxFreq);
+    limit_setting(recidia_settings.data.chart_guide.mid_freq, 0.0, maxFreq);
+    limit_setting(recidia_settings.data.chart_guide.end_freq, 0.0, maxFreq);
 
     // Data shared between threads
     recidia_data = {};

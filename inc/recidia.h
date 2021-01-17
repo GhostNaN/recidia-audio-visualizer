@@ -96,7 +96,7 @@ struct recidia_data_settings {
     
     struct savgol_filter { 
         float window_size; 
-        uint poly_order; 
+        unsigned int poly_order; 
     } savgol_filter;
     
     struct chart_guide {
@@ -108,17 +108,17 @@ struct recidia_data_settings {
         float end_freq;
     } chart_guide;
     
-    float poll_rate;
-    recidia_const_setting<float> POLL_RATE;
+    unsigned int poll_rate;
+    recidia_const_setting<unsigned int> POLL_RATE;
     
-    int stats;
+    bool stats;
 };
 
 struct rgba_color {
-    uint red;
-    uint green;
-    uint blue;
-    uint alpha;
+    unsigned int red;
+    unsigned int green;
+    unsigned int blue;
+    unsigned int alpha;
 };
 
 struct recidia_design_settings {
@@ -140,8 +140,8 @@ struct recidia_design_settings {
 };
 
 struct recidia_misc_settings {
-    int settings_menu;
-    int frameless;
+    bool settings_menu;
+    bool frameless;
 };
 
 // Global settings/data because it's used EVERYWHERE, passing is stupid
@@ -163,10 +163,13 @@ struct recidia_data_struct {
 extern struct recidia_data_struct recidia_data;
 
 int get_setting_change(char key);
-
 void change_setting_by_key(char key);
+void limit_setting(float &setting, float min, float max);
+void limit_setting(int &setting, int min, int max);
+void limit_setting(unsigned int &setting, unsigned int min, unsigned int max);
 
-void get_settings(int GUI);
+void init_recidia_settings(int GUI);
+void get_config_settings(int GUI);
 
 void init_curses();
 

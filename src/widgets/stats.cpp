@@ -43,6 +43,7 @@ StatsWidget::StatsWidget() {
     QLabel *intervalLabel = new QLabel("Interval:", this);
     layout->addWidget(intervalLabel);
     QSpinBox *intervalSpinBox = new QSpinBox(this);
+    intervalSpinBox->setFocusPolicy(Qt::ClickFocus);
     intervalSpinBox->setRange(1, 1000);
     intervalSpinBox->setValue(100);
     intervalSpinBox->setSuffix("ms");
