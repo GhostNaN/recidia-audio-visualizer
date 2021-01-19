@@ -1,20 +1,6 @@
 # ReCidia Audio Visualizer
-### A highly customizable real time audio visualizer on Linux excluding Python
+### A highly customizable real time audio visualizer on Linux
 ##### Based on ReVidia: https://github.com/GhostNaN/ReVidia-Audio-Visualizer
-
-
-## Diffrences from ReVidia(Python)
-The Good:
-- No Python! It uses C/C++ now.
-- Much faster, at least 3x times
-- Way less RAM usage
-- Lower latency
-- Better terminal version 
-- Proper config file "settings.cfg"
-
-The Bad:
-- Missing cool features
-- No Windows support
 
 ## Dependencies
 - gsl
@@ -76,11 +62,11 @@ recidia literally any arg
 ```
 
 ### Customizing
-Use the [settings.cfg](/settings.cfg) file to set: 
-- default behavior 
-- boundaries min/max
-- keybindings/controls for runtime changes
-
+Use the [settings.cfg](/settings.cfg) file to: 
+- set default behavior 
+- adjust control boundaries
+- set keybindings/controls for runtime changes
+- read docs
 
  ## License
 This project is licensed under the GPLv3 License - see the [LICENSE](/LICENSE) file for details
