@@ -1,3 +1,4 @@
+![Preview](https://github.com/GhostNaN/recidia-audio-visualizer/blob/assets/preview.apng)
 # ReCidia Audio Visualizer
 ### A highly customizable real time audio visualizer on Linux
 ##### Based on ReVidia: https://github.com/GhostNaN/ReVidia-Audio-Visualizer
