@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <recidia.h>
-#include <qt_window.h>
+#include <qt_window.hpp>
 
 using namespace std;
 
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
     get_audio_device(&audioData, GUI);
 
     // Apply limits to settings that needed audioData info
-    float maxFreq = audioData.sample_rate / 2;
+    float maxFreq = (float) audioData.sample_rate / 2;
     limit_setting(recidia_settings.data.chart_guide.start_freq, 0.0, maxFreq);
     limit_setting(recidia_settings.data.chart_guide.mid_freq, 0.0, maxFreq);
     limit_setting(recidia_settings.data.chart_guide.end_freq, 0.0, maxFreq);

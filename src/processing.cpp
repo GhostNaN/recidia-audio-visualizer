@@ -53,7 +53,7 @@ static void create_chart_table(uint chart_size, uint *chart_table, recidia_audio
     }
 
     float stepSize = 1;
-    float limit = recidia_settings.data.audio_buffer_size / 2;
+    float limit = (float) recidia_settings.data.audio_buffer_size / 2;
     float prevStep;
     float nextStep = beizerTable[0];
     chart_table[0] = (uint) beizerTable[0];
@@ -343,7 +343,6 @@ void init_processing(recidia_audio_data *audio_data) {
 
         // Sleep for poll time
         uint latency = utime_now() - timerStart;
-
         int sleepTime = ((recidia_settings.data.poll_rate * 1000) - latency);
         if (sleepTime > 0)
             usleep(sleepTime);

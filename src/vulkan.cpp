@@ -7,7 +7,8 @@
 #include <glm/glm.hpp>
 #include <shaderc/shaderc.hpp>
 
-#include <qt_window.h>
+#include <qt_window.hpp>
+#include <recidia.h>
 
 using namespace std;
 

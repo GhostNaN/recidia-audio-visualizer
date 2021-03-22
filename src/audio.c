@@ -180,6 +180,7 @@ void pulse_collect_audio_data(recidia_audio_data *audio_data) {return;}
 struct port_device_info *port_head = NULL;
 
 struct port_device_info *get_port_devices_info() {
+
     // Prevent portaudio debug logs
     fclose(stderr);
     Pa_Initialize();

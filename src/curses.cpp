@@ -8,7 +8,32 @@
 
 using namespace std;
 
+static void set_colors() {
+    if (recidia_settings.design.main_color.alpha || recidia_settings.design.back_color.alpha) {
+        start_color();
+        use_default_colors();
+        short main_color = -1;
+        short back_color = -1;
 
+        if (recidia_settings.design.main_color.alpha) {
+            main_color = 1;
+            short main_red = recidia_settings.design.main_color.red / 0.255;
+            short main_green = recidia_settings.design.main_color.green / 0.255;
+            short main_blue = recidia_settings.design.main_color.blue / 0.255;
+            init_color(main_color, main_red, main_green, main_blue);
+        }
+        if (recidia_settings.design.back_color.alpha) {
+            back_color = 2;
+            short back_red = recidia_settings.design.back_color.red / 0.255;
+            short back_green = recidia_settings.design.back_color.green / 0.255;
+            short back_blue = recidia_settings.design.back_color.blue / 0.255;
+            init_color(back_color, back_red, back_green, back_blue);
+        }
+
+        init_pair(1, main_color, back_color);
+        attron(COLOR_PAIR(1));
+    }
+}
 
 void init_curses() {
     setlocale(LC_ALL, "");
@@ -19,6 +44,8 @@ void init_curses() {
     keypad(stdscr, TRUE);
     mousemask(ALL_MOUSE_EVENTS, NULL);
     mouseinterval(0); // No double click
+
+    set_colors();
 
     // Initialize vars
     uint i, j;
@@ -73,10 +100,10 @@ void init_curses() {
             clear();
         }
         if (savgolWindowSize != recidia_settings.data.savgol_filter.window_size) {
-            savgolWindowSize = recidia_settings.data.savgol_filter.window_size * 100;
+            savgolWindowSize = recidia_settings.data.savgol_filter.window_size;
 
             timeOfDisplayed = 0;
-            settingToDisplay = "Savgol Window " + to_string((int) (savgolWindowSize+0.5)) + "%";
+            settingToDisplay = "Savgol Window " + to_string((int) ((savgolWindowSize * 100) + 0.5)) + "%";
         }
         if (interp != recidia_settings.data.interp) {
             interp = recidia_settings.data.interp;
@@ -227,6 +254,6 @@ void init_curses() {
                 change_setting_by_key(ch);
             }
         }
-        recidia_data.frame_time = (utime_now() - timerStart) / 1000;
+        recidia_data.frame_time = (float) (utime_now() - timerStart) / 1000;
     }
 }

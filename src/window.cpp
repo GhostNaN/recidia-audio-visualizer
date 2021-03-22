@@ -9,7 +9,7 @@
 #include <QListWidget>
 #include <QVBoxLayout>
 
-#include <qt_window.h>
+#include <qt_window.hpp>
 #include <recidia.h>
 
 using namespace std;
@@ -82,7 +82,7 @@ int init_gui(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     QVulkanInstance inst;
-//    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
+    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
     inst.create();
 
     VulkanWindow *vulkanWindow = new VulkanWindow;

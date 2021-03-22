@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <recidia.h>
-
 #pragma once
 
 int display_audio_devices(std::vector<std::string> devices, std::vector<uint> pulse_indexes, std::vector<uint> port_indexes);

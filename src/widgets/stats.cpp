@@ -4,7 +4,7 @@
 #include <QHideEvent>
 #include <QShowEvent>
 
-#include <qt_window.h>
+#include <qt_window.hpp>
 #include <recidia.h>
 
 void StatsWidget::updateStats() {
