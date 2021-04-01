@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string>
+#include <cstring>
 #include <locale.h>
 
 #include <ncurses.h>
@@ -35,6 +36,32 @@ static void set_colors() {
     }
 }
 
+static string *get_draw_chars(uint *draw_slices) {
+    // If none or less than 2 chars in draw_chars, force defaults
+    if (recidia_settings.design.draw_chars == NULL) {
+        const char *backupDrawChars[] = {" ","▁","▂","▃","▄","▅","▆","▇","█"};
+        recidia_settings.design.draw_chars = new char*[10];
+        for (uint i=0; i < 9; i++) {
+            recidia_settings.design.draw_chars[i] = new char[strlen(backupDrawChars[i])];
+            strcpy(recidia_settings.design.draw_chars[i], backupDrawChars[i]);
+        }
+        recidia_settings.design.draw_chars[9] = new char[1];
+        strcpy(recidia_settings.design.draw_chars[9], "\0");
+    }
+    
+    uint charsCount = 0;
+    for(uint i=0; strcmp(recidia_settings.design.draw_chars[i], "\0"); i++) {
+        charsCount++;
+    }
+    string *charList = new string[charsCount];
+    for(uint i=0; i < charsCount; i++) {
+        charList[i] = recidia_settings.design.draw_chars[i];
+    }
+    *draw_slices = charsCount - 1;
+
+    return charList;
+}
+
 void init_curses() {
     setlocale(LC_ALL, "");
     initscr();
@@ -54,7 +81,6 @@ void init_curses() {
     uint frameCount = 0;
     float realfps = 0;
     double latency = 0;
-    uint slices = 8;    // How many pieces/slices of a char block is shown
 
     // Used to show settings changes
     double plotHeightCap = recidia_settings.data.height_cap;
@@ -70,6 +96,10 @@ void init_curses() {
     string settingToDisplay;
     uint timeOfDisplayed = 0;
     const uint SECONDS_TO_DISPLAY = 2;
+
+    // Setup chars for drawing
+    uint drawSlices = 0;
+    string *charList = get_draw_chars(&drawSlices);
 
     while (1) {
         u_int64_t timerStart = utime_now();
@@ -135,7 +165,7 @@ void init_curses() {
             clear();
         }
 
-        ceiling = recidia_data.height * slices;
+        ceiling = recidia_data.height * drawSlices;
 
         // Finalize plots height
         for (i=0; i < plotsCount; i++ ) {
@@ -148,35 +178,30 @@ void init_curses() {
         }
 
         // Print plots/bars
-        string blockList[] = {"\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587"};
-
         for (uint y = 0; y < recidia_data.height; y++) {
 
-            uint limit = ceiling - (y * slices);
+            uint limit = ceiling - (y * drawSlices);
             string printBarLine;
 
             for (i=0; i < plotsCount; i++) {
 
                 if (limit <= finalPlots[i]) {   // Full
                     for (j=0; j < plotWidth; j++) {
-                        printBarLine += "\u2588";
+                        printBarLine += charList[drawSlices];
                     }
                 }
-                else if ((limit - slices) < finalPlots[i]) {  // Part
-
-                    unsigned int block = finalPlots[i] % slices;
-                    string stringBlock = blockList[block - 1];
+                else if ((limit - drawSlices) < finalPlots[i]) {  // Part
                     for (j=0; j < plotWidth; j++) {
-                        printBarLine += stringBlock;
+                        printBarLine += charList[finalPlots[i] % drawSlices];
                     }
                 }
                 else {   // Empty
                     for (j=0; j < plotWidth; j++) {
-                        printBarLine += " ";
+                        printBarLine += charList[0];
                     }
                 }
                 for (j=0; j < gapWidth; j++) {
-                    printBarLine += " ";
+                    printBarLine += charList[0];
                 }
 
             }

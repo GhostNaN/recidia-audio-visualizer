@@ -132,6 +132,7 @@ struct recidia_design_settings {
     unsigned int gap_width;
     recidia_const_setting<unsigned int> GAP_WIDTH;
     int draw_mode;
+    char **draw_chars;
     unsigned int fps_cap;
     recidia_const_setting<unsigned int> FPS_CAP;
     

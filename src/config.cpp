@@ -1,4 +1,5 @@
 #include <string>
+#include <cstring>
 #include <map>
 
 #include <libconfig.h++>
@@ -166,6 +167,7 @@ void init_recidia_settings(int GUI) {
     recidia_settings.design.draw_mode = 0;
     recidia_settings.design.main_color = {255, 255, 255, 255};
     recidia_settings.design.back_color = {50, 50, 50, 150};
+    recidia_settings.design.draw_chars = NULL;
     recidia_settings.data.height_cap = 500.0;
     recidia_settings.data.HEIGHT_CAP.MAX = 32768.0;
     recidia_settings.data.savgol_filter = {0.0, 3};
@@ -316,6 +318,23 @@ void get_config_settings(int GUI) {
                     set_const_key(confSetting, "decrease_key", GAP_WIDTH_DECREASE);
                     set_const_key(confSetting, "increase_key", GAP_WIDTH_INCREASE);
                     break;
+
+                case str2int("Plot Chars"):
+                {
+                    const libconfig::Setting &plotCharsSetting = confSetting.lookup("chars");
+                    int charsCount = plotCharsSetting.getLength();
+
+                    if (charsCount >= 2) { // Must be at least 2 chars              
+                        recidia_settings.design.draw_chars = new char*[charsCount + 1];
+                        for (int i=0; i < charsCount; i++) {
+                            recidia_settings.design.draw_chars[i] = new char[strlen(plotCharsSetting[i].c_str())];
+                            strcpy(recidia_settings.design.draw_chars[i], plotCharsSetting[i].c_str());
+                        }
+                        recidia_settings.design.draw_chars[charsCount] = new char[1];
+                        strcpy(recidia_settings.design.draw_chars[charsCount], "\0");
+                    }
+                    break;
+                }
 
                 case str2int("Data Height Cap"):
                     confSetting.lookupValue("default", recidia_settings.data.height_cap);
