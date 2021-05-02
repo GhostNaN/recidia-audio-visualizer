@@ -91,9 +91,11 @@ private:
     VkDescriptorSetLayout m_descSetLayout = VK_NULL_HANDLE;
     VkDescriptorSet m_descSet[QVulkanWindow::MAX_CONCURRENT_FRAME_COUNT];
 
-    VkPipelineCache m_pipelineCache = VK_NULL_HANDLE;
-    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout main_pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline main_pipeline = VK_NULL_HANDLE;
+    
+    VkPipelineLayout back_pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline back_pipeline = VK_NULL_HANDLE;
 
     QMatrix4x4 m_proj;
     float m_rotation = 0.0f;

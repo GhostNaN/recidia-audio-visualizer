@@ -16,33 +16,35 @@ static QVulkanWindow *vulkan_window;
 static VkDevice vulkan_dev;
 static QVulkanDeviceFunctions *dev_funct;
 
-VkBuffer vertex_buffer;
-VkDeviceMemory vertex_buffer_mem;
-VkBuffer index_buffer;
-VkDeviceMemory index_buffer_mem;
+VkBuffer back_vertex_buffer;
+VkDeviceMemory back_vertex_buffer_mem;
+VkBuffer main_vertex_buffer;
+VkDeviceMemory main_vertex_buffer_mem;
+VkBuffer main_index_buffer;
+VkDeviceMemory main_index_buffer_mem;
 VkRenderPass render_pass;
 
 struct Vertex {
-    glm::vec2 pos;
+    glm::vec3 pos;
     glm::vec4 color;
 
-    static VkVertexInputBindingDescription getBindingDescription() {
+    static VkVertexInputBindingDescription getBindingDescription(int binding) {
         VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
+        bindingDescription.binding = binding;
         bindingDescription.stride = sizeof(Vertex);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         return bindingDescription;
     }
 
-    static array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+    static array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions(int binding) {
         array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].binding = binding;
         attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].binding = binding;
         attributeDescriptions[1].location = 1;
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attributeDescriptions[1].offset = offsetof(Vertex, color);
@@ -51,11 +53,16 @@ struct Vertex {
     }
 };
 
+struct PushConstants {
+    glm::float32 time;
+    glm::float32 power;
+};
+
 std::vector<Vertex> BAR_VERTICES = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f, 1.0f}}
+    {{-0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}},
+    {{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}},
+    {{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}},
+    {{-1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}}
 };
 std::vector<uint16_t> BAR_INDICES = {
     0, 1, 2, 2, 3, 0
@@ -153,24 +160,16 @@ void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer,
         dev_funct->vkBindBufferMemory(vulkan_dev, buffer, bufferMemory, 0);
     }
 
-void VulkanRenderer::initResources() {
+static void createPipline(shader_setting shader, VkPipelineLayout &pipelineLayout, VkPipeline &pipeline, int binding) {
     VkResult err;
-
-    vulkan_dev = vulkan_window->device();
-    dev_funct = vulkan_window->vulkanInstance()->deviceFunctions(vulkan_dev);
-
-    // Vertex Buffer
-    createBuffer(VERTEX_BUFFER_SIZE, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertex_buffer, vertex_buffer_mem);
-    //Index Buffer
-    createBuffer(INDEX_BUFFER_SIZE, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_buffer, index_buffer_mem);
 
     // Graphics pipeline
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
     // Vertex data info
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = Vertex::getBindingDescription(binding);
+    auto attributeDescriptions = Vertex::getAttributeDescriptions(binding);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo;
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -182,9 +181,20 @@ void VulkanRenderer::initResources() {
     vertexInputInfo.flags = 0;
     pipelineInfo.pVertexInputState = &vertexInputInfo;
 
+    // Default shaders
+    if (!shader.vertex) {
+        string shaderName = "default.vert";
+        shader.vertex = new char[shaderName.length()+1];
+        strcpy(shader.vertex, shaderName.c_str());
+    }
+    if (!shader.frag) {
+        string shaderName = "default.frag";
+        shader.frag = new char[shaderName.length()+1];
+        strcpy(shader.frag, shaderName.c_str());
+    }
     // Shaders
-    VkShaderModule vertShaderModule = createShader("default.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
-    VkShaderModule fragShaderModule = createShader("default.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
+    VkShaderModule vertShaderModule = createShader(shader.vertex, shaderc_shader_kind::shaderc_glsl_vertex_shader);
+    VkShaderModule fragShaderModule = createShader(shader.frag, shaderc_shader_kind::shaderc_glsl_fragment_shader);
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -274,63 +284,29 @@ void VulkanRenderer::initResources() {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
+    
+	// Setup push constants to pass data to shaders
+	VkPushConstantRange push_constant;
+	push_constant.offset = 0;
+	push_constant.size = sizeof(PushConstants);
+	push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    err = dev_funct->vkCreatePipelineLayout(vulkan_dev, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
+	pipelineLayoutInfo.pPushConstantRanges = &push_constant;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+
+
+    err = dev_funct->vkCreatePipelineLayout(vulkan_dev, &pipelineLayoutInfo, nullptr, &pipelineLayout);
     if (err != VK_SUCCESS)
         qFatal("Failed to create pipeline layout: %d", err);
 
-    pipelineInfo.layout = m_pipelineLayout;
-
-    // Render Pass template fo later
-//    VkAttachmentDescription colorAttachment{};
-
-//    colorAttachment.format = vulkan_window->colorFormat();
-//    colorAttachment.samples = vulkan_window->sampleCountFlagBits();
-//    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-//    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-//    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-//    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-//    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-//    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-//    VkAttachmentReference colorAttachmentRef{};
-//    colorAttachmentRef.attachment = 0;
-//    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-//    VkSubpassDescription subpass{};
-//    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-//    subpass.colorAttachmentCount = 1;
-//    subpass.pColorAttachments = &colorAttachmentRef;
-
-//    VkSubpassDependency dependency{};
-//    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-//    dependency.dstSubpass = 0;
-//    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//    dependency.srcAccessMask = 0;
-//    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-//    VkRenderPassCreateInfo renderPassInfo{};
-//    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-//    renderPassInfo.attachmentCount = 1;
-//    renderPassInfo.pAttachments = &colorAttachment;
-//    renderPassInfo.subpassCount = 1;
-//    renderPassInfo.pSubpasses = &subpass;
-//    renderPassInfo.dependencyCount = 1;
-//    renderPassInfo.pDependencies = &dependency;
-
-
-//    if (dev_funct->vkCreateRenderPass(vulkan_dev, &renderPassInfo, nullptr, &render_pass) != VK_SUCCESS) {
-//        throw std::runtime_error("failed to create render pass!");
-//    }
-//    pipelineInfo.renderPass = render_pass;
+    pipelineInfo.layout = pipelineLayout;
 
     pipelineInfo.renderPass = vulkan_window->defaultRenderPass();
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
     // Finish up Pipline
-    err = dev_funct->vkCreateGraphicsPipelines(vulkan_dev, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline);
+    err = dev_funct->vkCreateGraphicsPipelines(vulkan_dev, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
     if (err != VK_SUCCESS)
         printf("Failed to create graphics pipeline: %d", err);
 
@@ -339,6 +315,18 @@ void VulkanRenderer::initResources() {
         dev_funct->vkDestroyShaderModule(vulkan_dev, vertShaderModule, nullptr);
     if (fragShaderModule)
         dev_funct->vkDestroyShaderModule(vulkan_dev, fragShaderModule, nullptr);
+}
+
+void VulkanRenderer::initResources() {
+    vulkan_dev = vulkan_window->device();
+    dev_funct = vulkan_window->vulkanInstance()->deviceFunctions(vulkan_dev);
+
+    createBuffer(VERTEX_BUFFER_SIZE, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, back_vertex_buffer, back_vertex_buffer_mem);
+    createBuffer(VERTEX_BUFFER_SIZE, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, main_vertex_buffer, main_vertex_buffer_mem);
+    createBuffer(INDEX_BUFFER_SIZE, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, main_index_buffer, main_index_buffer_mem);
+
+    createPipline(recidia_settings.misc.back_shader, back_pipelineLayout, back_pipeline, 0);
+    createPipline(recidia_settings.misc.main_shader, main_pipelineLayout, main_pipeline, 1);
 }
 
 void VulkanRenderer::initSwapChainResources() {
@@ -352,24 +340,33 @@ void VulkanRenderer::releaseSwapChainResources() {
 void VulkanRenderer::releaseResources() {
     dev_funct->vkDestroyRenderPass(vulkan_dev, render_pass, nullptr);
 
-    if (vertex_buffer) {
-        dev_funct->vkDestroyBuffer(vulkan_dev, vertex_buffer, nullptr);
-        dev_funct->vkFreeMemory(vulkan_dev, vertex_buffer_mem, nullptr);
+    if (main_vertex_buffer) {
+        dev_funct->vkDestroyBuffer(vulkan_dev, main_vertex_buffer, nullptr);
+        dev_funct->vkFreeMemory(vulkan_dev, main_vertex_buffer_mem, nullptr);
+    }
+    if (back_vertex_buffer) {
+        dev_funct->vkDestroyBuffer(vulkan_dev, back_vertex_buffer, nullptr);
+        dev_funct->vkFreeMemory(vulkan_dev, back_vertex_buffer_mem, nullptr);
     }
 
-    if (m_pipeline) {
-        dev_funct->vkDestroyPipeline(vulkan_dev, m_pipeline, nullptr);
-        m_pipeline = VK_NULL_HANDLE;
+    if (main_pipeline) {
+        dev_funct->vkDestroyPipeline(vulkan_dev, main_pipeline, nullptr);
+        main_pipeline = VK_NULL_HANDLE;
     }
 
-    if (m_pipelineLayout) {
-        dev_funct->vkDestroyPipelineLayout(vulkan_dev, m_pipelineLayout, nullptr);
-        m_pipelineLayout = VK_NULL_HANDLE;
+    if (main_pipelineLayout) {
+        dev_funct->vkDestroyPipelineLayout(vulkan_dev, main_pipelineLayout, nullptr);
+        main_pipelineLayout = VK_NULL_HANDLE;
     }
 
-    if (m_pipelineCache) {
-        dev_funct->vkDestroyPipelineCache(vulkan_dev, m_pipelineCache, nullptr);
-        m_pipelineCache = VK_NULL_HANDLE;
+    if (back_pipeline) {
+        dev_funct->vkDestroyPipeline(vulkan_dev, back_pipeline, nullptr);
+        back_pipeline = VK_NULL_HANDLE;
+    }
+
+    if (back_pipelineLayout) {
+        dev_funct->vkDestroyPipelineLayout(vulkan_dev, back_pipelineLayout, nullptr);
+        back_pipelineLayout = VK_NULL_HANDLE;
     }
 
     if (m_descSetLayout) {
@@ -453,7 +450,7 @@ void create_plots() {
                     yPos += finalPlots[i];
             }
 
-            vertex.pos = {xPos, -yPos};
+            vertex.pos = {xPos, -yPos, vertex.pos[2]};
             vertex.color = {red, green, blue, alpha};
             plotsVertexes.push_back(vertex);
         }
@@ -469,13 +466,81 @@ void create_plots() {
 
     // Copy vertices data to mem
     void* data;
-    dev_funct->vkMapMemory(vulkan_dev, vertex_buffer_mem, 0, VERTEX_BUFFER_SIZE, 0, &data);
+    dev_funct->vkMapMemory(vulkan_dev, main_vertex_buffer_mem, 0, VERTEX_BUFFER_SIZE, 0, &data);
         memcpy(data, plotsVertexes.data(), plotsVertexes.size() * sizeof(plotsVertexes.data()[0]));
-    dev_funct->vkUnmapMemory(vulkan_dev, vertex_buffer_mem);
-    // Index
-    dev_funct->vkMapMemory(vulkan_dev, index_buffer_mem, 0, INDEX_BUFFER_SIZE, 0, &data);
+    dev_funct->vkUnmapMemory(vulkan_dev, main_vertex_buffer_mem);
+    // Index 
+    dev_funct->vkMapMemory(vulkan_dev, main_index_buffer_mem, 0, INDEX_BUFFER_SIZE, 0, &data);
         memcpy(data, plotsIndexes.data(), plotsIndexes.size() * sizeof(plotsIndexes.data()[0]));
-    dev_funct->vkUnmapMemory(vulkan_dev, index_buffer_mem);
+    dev_funct->vkUnmapMemory(vulkan_dev, main_index_buffer_mem);
+}
+
+static PushConstants get_push_constants(shader_setting shader) {
+    PushConstants constants;
+    
+    constants.time = (float) (utime_now() % (1000000 * shader.loop_time)) / 1000000;
+    
+    constants.power = 0.0;
+    // Rounded up plots count
+    uint plotsPowerCount = 0.5 + (recidia_data.plots_count * (shader.power_mod_range[1] - shader.power_mod_range[0]));
+    uint plotPowerStart = (recidia_data.plots_count - 1) * shader.power_mod_range[0];
+    for(uint i=plotPowerStart; i < (plotsPowerCount + plotPowerStart) && i < recidia_data.plots_count; i++) {
+
+        float powerPush = recidia_data.plots[i] / recidia_settings.data.height_cap;
+        if (powerPush < 1.0) {
+            constants.power += powerPush / plotsPowerCount;
+        }
+        else {
+            constants.power += 1.0 / plotsPowerCount;
+        }
+    }
+    constants.power *= shader.power;
+
+    return constants;
+}
+
+static void draw_background(VkCommandBuffer &commandBuffer, VkPipelineLayout &pipelineLayout, VkPipeline &pipeline) {
+
+    // Background Color
+    float alpha = (float) recidia_settings.design.back_color.alpha / 255;
+    float red = get_linear_color(recidia_settings.design.back_color.red) * alpha;
+    float green = get_linear_color(recidia_settings.design.back_color.green) * alpha;
+    float blue = get_linear_color(recidia_settings.design.back_color.blue) * alpha;
+
+    const int verticesCount = 6;
+    Vertex backVerticies[verticesCount] = {
+        {{-1.0f, -1.0f, 0.0f}, {red, green, blue, alpha}},
+        {{-1.0f, 1.0f, 0.0f}, {red, green, blue, alpha}},
+        {{1.0f, -1.0f, 0.0f}, {red, green, blue, alpha}},
+
+        {{-1.0f, 1.0f, 0.0f}, {red, green, blue, alpha}},
+        {{1.0f, 1.0f, 0.0f}, {red, green, blue, alpha}},
+        {{1.0f, -1.0f, 0.0f}, {red, green, blue, alpha}},
+    };
+
+    void* data;
+    dev_funct->vkMapMemory(vulkan_dev, back_vertex_buffer_mem, 0, VERTEX_BUFFER_SIZE, 0, &data);
+        memcpy(data, backVerticies, sizeof(backVerticies[0]) * verticesCount);
+    dev_funct->vkUnmapMemory(vulkan_dev, back_vertex_buffer_mem);
+
+    dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    PushConstants constants = get_push_constants(recidia_settings.misc.back_shader);
+    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
+
+    dev_funct->vkCmdDraw(commandBuffer, verticesCount, 1, 0, 0);
+}
+
+static void draw_plots(VkCommandBuffer &commandBuffer, VkPipelineLayout &pipelineLayout, VkPipeline &pipeline) {
+    create_plots();
+
+    dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    PushConstants constants = get_push_constants(recidia_settings.misc.main_shader);
+    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
+
+    uint32_t indices_count = recidia_data.plots_count * BAR_INDICES.size();
+    dev_funct->vkCmdDrawIndexed(commandBuffer, indices_count, 1, 0, 0, 0);
 }
 
 void VulkanRenderer::startNextFrame() {
@@ -485,26 +550,12 @@ void VulkanRenderer::startNextFrame() {
     recidia_data.height = vulkan_window->height() * recidia_settings.design.draw_height;
     recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width)) + 1;
 
-    // Background Color
-    float alpha = (float) recidia_settings.design.back_color.alpha / 255;
-    float red = get_linear_color(recidia_settings.design.back_color.red) * alpha;
-    float green = get_linear_color(recidia_settings.design.back_color.green) * alpha;
-    float blue = get_linear_color(recidia_settings.design.back_color.blue) * alpha;
-
-    VkClearColorValue clearColor = {{red, green, blue, alpha}};
+    VkClearColorValue clearColor = {{0, 0, 0, 0}};
     VkClearDepthStencilValue clearDS = { 1, 0 };
     VkClearValue clearValues[3]{};
 
     clearValues[0].color = clearValues[2].color = clearColor;
     clearValues[1].depthStencil = clearDS;
-
-    // Bind buffers
-    VkBuffer vertexBuffers[] = {vertex_buffer};
-    VkDeviceSize vbOffset[] = {0};
-    dev_funct->vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, vbOffset);
-    dev_funct->vkCmdBindIndexBuffer(commandBuffer, index_buffer, 0, VK_INDEX_TYPE_UINT32);
-
-    dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
     // Graphics view
     VkViewport viewport;
@@ -531,17 +582,18 @@ void VulkanRenderer::startNextFrame() {
     rpBeginInfo.renderArea.extent.height = vulkan_window->height();
     rpBeginInfo.clearValueCount = vulkan_window->sampleCountFlagBits() > VK_SAMPLE_COUNT_1_BIT ? 3 : 2;
     rpBeginInfo.pClearValues = clearValues;
-    VkCommandBuffer cmdBuf = vulkan_window->currentCommandBuffer();
-    dev_funct->vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-
-    create_plots();
+    // Bind buffers
+    VkDeviceSize vbOffset[] = {0};
+    dev_funct->vkCmdBindVertexBuffers(commandBuffer, 0, 1, &back_vertex_buffer, vbOffset);
+    dev_funct->vkCmdBindVertexBuffers(commandBuffer, 1, 1, &main_vertex_buffer, vbOffset);
+    dev_funct->vkCmdBindIndexBuffer(commandBuffer, main_index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // DRAW FINALLY
-    uint32_t indices_count = recidia_data.plots_count * BAR_INDICES.size();
-    dev_funct->vkCmdDrawIndexed(commandBuffer, indices_count, 1, 0, 0, 0);
-
-    dev_funct->vkCmdEndRenderPass(cmdBuf);
+    dev_funct->vkCmdBeginRenderPass(commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    draw_background(commandBuffer, back_pipelineLayout, back_pipeline);
+    draw_plots(commandBuffer, main_pipelineLayout, main_pipeline);
+    dev_funct->vkCmdEndRenderPass(commandBuffer);
 
     vulkan_window->frameReady();
     recidia_data.latency = (utime_now() - recidia_data.time) / 1000;

@@ -167,6 +167,8 @@ void init_recidia_settings(int GUI) {
     recidia_settings.design.draw_mode = 0;
     recidia_settings.design.main_color = {255, 255, 255, 255};
     recidia_settings.design.back_color = {50, 50, 50, 150};
+    recidia_settings.misc.main_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
+    recidia_settings.misc.back_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
     recidia_settings.design.draw_chars = NULL;
     recidia_settings.data.height_cap = 500.0;
     recidia_settings.data.HEIGHT_CAP.MAX = 32768.0;
@@ -426,7 +428,46 @@ void get_config_settings(int GUI) {
                     confSetting.lookupValue("enabled", recidia_settings.data.stats);
                     set_const_key(confSetting, "toggle_key", STATS_TOGGLE);
                     break;
+                
+                case str2int("Shaders"):
+                {   
+                    string shaderName;
+                    string shaderTypes[] = {"main", "back"};
+                    shader_setting *shaders[] = {&recidia_settings.misc.main_shader,
+                                                &recidia_settings.misc.back_shader};
 
+                    for (uint i=0; i < 2; i++) {
+                        shaderName = "";
+                        confSetting.lookupValue(shaderTypes[i] + "_vertex", shaderName);
+                        if (shaderName == "") // Default if nothing
+                            shaderName = "default.vert";
+                        shaders[i]->vertex = new char[shaderName.length()+1];
+                        strcpy(shaders[i]->vertex, shaderName.c_str());
+
+                        shaderName = "";
+                        confSetting.lookupValue(shaderTypes[i] + "_frag", shaderName);
+                        if (shaderName == "") // Default if nothing
+                            shaderName = "default.frag";
+                        shaders[i]->frag = new char[shaderName.length()+1];
+                        strcpy(shaders[i]->frag, shaderName.c_str());
+                        
+
+                        confSetting.lookupValue(shaderTypes[i] + "_loop_time", shaders[i]->loop_time);
+                        confSetting.lookupValue(shaderTypes[i] + "_power", shaders[i]->power);
+
+                        const libconfig::Setting &powerModSetting = confSetting.lookup(shaderTypes[i] + "_power_mod_range");
+                        if ((float) powerModSetting[0] < (float) powerModSetting[1]) {
+                            shaders[i]->power_mod_range[0] = powerModSetting[0];
+                            shaders[i]->power_mod_range[1] = powerModSetting[1];
+                        } else { // Fix inverted range
+                            shaders[i]->power_mod_range[0] = powerModSetting[1];
+                            shaders[i]->power_mod_range[1] = powerModSetting[0];
+                        }
+                        limit_setting(shaders[i]->power_mod_range[0], 0.0, 1.0);
+                        limit_setting(shaders[i]->power_mod_range[1], 0.0, 1.0);
+                    }
+                    break;
+                }
                 default:
                     fprintf(stderr, "Cannot recognize setting: \"%s\"\n", name.c_str());
             }

@@ -25,7 +25,7 @@ endif
 
 assert(audio_check, 'You need PulseAudio and/or PortAudio')
 
-qt6 = dependency('qt6', modules: ['Core', 'Gui', 'Widgets'])
+qt5 = dependency('qt5', modules: ['Core', 'Gui', 'Widgets'])
 
 #add_project_arguments('-D_FORTIFY_SOURCE=2', '-O2', language : 'cpp')
 
@@ -33,4 +33,4 @@ executable(meson.project_name(), ['src/main.cpp', 'src/audio.c', 'src/processing
 'src/curses.cpp', 'src/config.cpp', 'src/window.cpp', 'src/vulkan.cpp',
 'src/widgets/settings.cpp', 'src/widgets/stats.cpp'],
 include_directories : ['inc'],
-dependencies: [gsl, fftw, threads, curses, libconfig, pulse_simple, portaudio, qt6, shaderc], install: true)
+dependencies: [gsl, fftw, threads, curses, libconfig, pulse_simple, portaudio, qt5, shaderc], install: true)

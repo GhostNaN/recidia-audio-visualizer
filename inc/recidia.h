@@ -140,9 +140,19 @@ struct recidia_design_settings {
     rgba_color back_color;
 };
 
+struct shader_setting {
+    char *vertex;
+    char *frag;
+    uint loop_time;
+    float power;
+    float power_mod_range[2];
+};
+
 struct recidia_misc_settings {
     bool settings_menu;
     bool frameless;
+    shader_setting main_shader;
+    shader_setting back_shader;
 };
 
 // Global settings/data because it's used EVERYWHERE, passing is stupid
