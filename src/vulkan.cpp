@@ -12,7 +12,7 @@
 
 using namespace std;
 
-static QVulkanWindow *vulkan_window;
+static VulkanWindow *vulkan_window;
 static VkDevice vulkan_dev;
 static QVulkanDeviceFunctions *dev_funct;
 
@@ -22,7 +22,6 @@ VkBuffer main_vertex_buffer;
 VkDeviceMemory main_vertex_buffer_mem;
 VkBuffer main_index_buffer;
 VkDeviceMemory main_index_buffer_mem;
-VkRenderPass render_pass;
 
 struct Vertex {
     glm::vec3 pos;
@@ -93,21 +92,20 @@ VulkanRenderer::VulkanRenderer(VulkanWindow *window) {
 
 VkShaderModule createShader(const string name, shaderc_shader_kind shader_kind) {
     string homeDir = getenv("HOME");
-    vector<string> shaderFileLocations = {"shaders/",
+    string shaderFileLocations[] = {"shaders/",
                                     "../shaders/",
                                     homeDir + "/.config/recidia/shaders/",
                                     "/etc/recidia/shaders/"};
     // Read shader file
     ifstream file;
-    for (uint i=0; i < shaderFileLocations.size(); i++) {
+    for (uint i=0; i < 4; i++) {
         file.open(shaderFileLocations[i] + name);
-        if (file.is_open()) {
+        if (file.is_open())
             break;
-        }
     }
-    if (!file.is_open()) {
+    if (!file.is_open())
         throw std::runtime_error("Failed to find shader file!");
-    }
+
     std::string shaderText( (std::istreambuf_iterator<char>(file) ),
                           (std::istreambuf_iterator<char>()    ) );
     file.close();
@@ -289,7 +287,7 @@ static void createPipline(shader_setting shader, VkPipelineLayout &pipelineLayou
 	VkPushConstantRange push_constant;
 	push_constant.offset = 0;
 	push_constant.size = sizeof(PushConstants);
-	push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	pipelineLayoutInfo.pPushConstantRanges = &push_constant;
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
@@ -338,8 +336,6 @@ void VulkanRenderer::releaseSwapChainResources() {
 }
 
 void VulkanRenderer::releaseResources() {
-    dev_funct->vkDestroyRenderPass(vulkan_dev, render_pass, nullptr);
-
     if (main_vertex_buffer) {
         dev_funct->vkDestroyBuffer(vulkan_dev, main_vertex_buffer, nullptr);
         dev_funct->vkFreeMemory(vulkan_dev, main_vertex_buffer_mem, nullptr);
@@ -526,7 +522,8 @@ static void draw_background(VkCommandBuffer &commandBuffer, VkPipelineLayout &pi
     dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     PushConstants constants = get_push_constants(recidia_settings.misc.back_shader);
-    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
+    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
 
     dev_funct->vkCmdDraw(commandBuffer, verticesCount, 1, 0, 0);
 }
@@ -537,7 +534,8 @@ static void draw_plots(VkCommandBuffer &commandBuffer, VkPipelineLayout &pipelin
     dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     PushConstants constants = get_push_constants(recidia_settings.misc.main_shader);
-    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
+    dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
 
     uint32_t indices_count = recidia_data.plots_count * BAR_INDICES.size();
     dev_funct->vkCmdDrawIndexed(commandBuffer, indices_count, 1, 0, 0, 0);
@@ -545,6 +543,11 @@ static void draw_plots(VkCommandBuffer &commandBuffer, VkPipelineLayout &pipelin
 
 void VulkanRenderer::startNextFrame() {
     VkCommandBuffer commandBuffer = vulkan_window->currentCommandBuffer();
+
+    if (vulkan_window->shader_setting_change) {
+        this->recreatePipline();
+        vulkan_window->shader_setting_change = 0;
+    }
 
     recidia_data.width = vulkan_window->width() * recidia_settings.design.draw_width;
     recidia_data.height = vulkan_window->height() * recidia_settings.design.draw_height;
@@ -596,7 +599,7 @@ void VulkanRenderer::startNextFrame() {
     dev_funct->vkCmdEndRenderPass(commandBuffer);
 
     vulkan_window->frameReady();
-    recidia_data.latency = (utime_now() - recidia_data.time) / 1000;
+    recidia_data.latency = (float) (utime_now() - recidia_data.start_time) / 1000;
 
     // Sleep for fps cap
     double frameTime = 0;
@@ -611,4 +614,29 @@ void VulkanRenderer::startNextFrame() {
     last_frame_time = utime_now();
 
     vulkan_window->requestUpdate(); // render continuously, throttled by the presentation rate
+}
+
+void VulkanRenderer::recreatePipline() {
+    dev_funct->vkDeviceWaitIdle(vulkan_dev);
+    this->releaseSwapChainResources();
+
+    if (vulkan_window->shader_setting_change == 1) {
+        dev_funct->vkDestroyPipeline(vulkan_dev, main_pipeline, nullptr);
+        main_pipeline = VK_NULL_HANDLE;
+    
+        dev_funct->vkDestroyPipelineLayout(vulkan_dev, main_pipelineLayout, nullptr);
+        main_pipelineLayout = VK_NULL_HANDLE;
+
+        createPipline(recidia_settings.misc.main_shader, main_pipelineLayout, main_pipeline, 1);
+    }
+    else if (vulkan_window->shader_setting_change == 2) {
+        dev_funct->vkDestroyPipeline(vulkan_dev, back_pipeline, nullptr);
+        back_pipeline = VK_NULL_HANDLE;
+
+        dev_funct->vkDestroyPipelineLayout(vulkan_dev, back_pipelineLayout, nullptr);
+        back_pipelineLayout = VK_NULL_HANDLE;
+    
+        createPipline(recidia_settings.misc.back_shader, back_pipelineLayout, back_pipeline, 0);
+    }
+    this->initSwapChainResources();
 }

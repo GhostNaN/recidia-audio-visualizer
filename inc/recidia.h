@@ -165,7 +165,7 @@ extern struct recidia_settings_struct recidia_settings;
 
 struct recidia_data_struct {    
     unsigned int width, height;
-    double time;
+    u_int64_t start_time;
     float latency;
     float frame_time;
     unsigned int plots_count;

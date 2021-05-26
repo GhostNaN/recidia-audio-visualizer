@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
     recidia_data = {};
     recidia_data.width = 10;
     recidia_data.height = 10;
-    recidia_data.time = 0;
+    recidia_data.start_time = 0;
     recidia_data.frame_time = 0;
     recidia_data.plots_count = (recidia_data.width / (recidia_settings.design.plot_width + recidia_settings.design.gap_width));
     recidia_data.plots = (float*) calloc(recidia_settings.data.AUDIO_BUFFER_SIZE.MAX / 2, sizeof(float));

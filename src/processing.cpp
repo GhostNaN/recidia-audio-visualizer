@@ -261,7 +261,7 @@ void init_processing(recidia_audio_data *audio_data) {
         }
 
         // For latency display
-        recidia_data.time = utime_now();
+        recidia_data.start_time = utime_now();
 
         fftw_execute(fftPlan);
 

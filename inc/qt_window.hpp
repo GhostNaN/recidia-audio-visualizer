@@ -62,6 +62,8 @@ protected:
 class VulkanWindow : public QVulkanWindow {
     
 public:
+    int shader_setting_change;
+
     QVulkanWindowRenderer *createRenderer() override;
     MainWindow *main_window;
     
@@ -79,6 +81,7 @@ public:
     void releaseSwapChainResources() override;
     void releaseResources() override;
     void startNextFrame() override;
+    void recreatePipline();
 
 private:
     double last_frame_time;

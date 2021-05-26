@@ -80,7 +80,6 @@ void init_curses() {
     uint finalPlots[recidia_settings.data.AUDIO_BUFFER_SIZE.MAX / 2];
     uint frameCount = 0;
     float realfps = 0;
-    double latency = 0;
 
     // Used to show settings changes
     double plotHeightCap = recidia_settings.data.height_cap;
@@ -225,13 +224,12 @@ void init_curses() {
         // Draw stats
         if (recidia_settings.data.stats) {
             if (frameCount % ((recidia_settings.design.fps_cap / 10) + 1) == 0) { // Slow down stats
-                latency = utime_now();
-                latency = (latency - recidia_data.time) / 1000;
+                recidia_data.latency = (float) (utime_now() - recidia_data.start_time) / 1000;
 
                 realfps = 1000 / recidia_data.frame_time;
             }
 
-            mvprintw(0, 0, "%s %.1fms", "Latency:" ,latency);
+            mvprintw(0, 0, "%s %.1fms", "Latency:" ,recidia_data.latency);
             mvprintw(1, 0, "%s %.1f", "FPS:" ,realfps);
             mvprintw(2, 0, "%s %i", "Plots:" ,plotsCount);
         }
@@ -245,9 +243,9 @@ void init_curses() {
 
         int sleepTime = 1;
         while (sleepTime > 0) {
-            u_int64_t latency = utime_now() - timerStart;
+            u_int64_t delayTime = utime_now() - timerStart;
 
-            sleepTime = (((1000 / (double) recidia_settings.design.fps_cap) * 1000) - latency);
+            sleepTime = (((1000 / (double) recidia_settings.design.fps_cap) * 1000) - delayTime);
             usleep(1000);
 
             // Get input

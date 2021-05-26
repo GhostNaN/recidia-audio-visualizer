@@ -1,5 +1,7 @@
-#include <string>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 #include <QKeyEvent>
 #include <QPushButton>
@@ -11,6 +13,9 @@
 #include <QSpinBox>
 #include <QTimer>
 #include <QPainter>
+#include <QComboBox>
+#include <QStringList>
+#include <QSplitter>
 
 #include <qt_window.hpp>
 #include <recidia.h>
@@ -418,6 +423,168 @@ SettingsTabWidget::SettingsTabWidget() {
         recidia_settings.design.fps_cap = value;
     });
     designTabLayout->addWidget(fpsCapSpinBox, 4, 4);
+
+
+    QWidget *graphicsTab = new QWidget(this);
+    this->addTab(graphicsTab, "Graphics");
+
+    QTabWidget *shaderTabs = new QTabWidget(this);
+    QHBoxLayout *graphicsTabLaylout = new QHBoxLayout;
+    graphicsTab->setLayout(graphicsTabLaylout);
+    graphicsTabLaylout->addWidget(shaderTabs);
+
+    QWidget *mainShaderTab = new QWidget(this);
+    QWidget *backShaderTab = new QWidget(this);
+    shaderTabs->addTab(mainShaderTab, "Main Shader");
+    shaderTabs->addTab(backShaderTab, "Back Shader");
+
+    // Find ALL shader files and add to list
+    vector<string> shaderFiles; 
+    string homeDir = getenv("HOME");
+    string shaderFilesLocations[] = {"shaders/",
+                                    "../shaders/",
+                                    homeDir + "/.config/recidia/shaders/",
+                                    "/etc/recidia/shaders/"};
+    for(uint i=0; i < 4; i++) {
+        try {
+            for (const auto &entry : filesystem::directory_iterator(shaderFilesLocations[i])) {
+                string shaderFile = entry.path();
+                shaderFile.erase(0, shaderFilesLocations[i].size());
+                shaderFiles.push_back(shaderFile);
+            }
+        }
+        catch (filesystem::filesystem_error const& ex) {
+            if (i == 3) {
+                throw std::runtime_error("Failed to find shaders folder!");
+                return;
+            }
+        }
+    }
+
+    QStringList *vertexShaders = new QStringList;
+    QStringList *fragShaders = new QStringList;
+    for(uint i=0; i < shaderFiles.size(); i++) {
+        if (shaderFiles[i].find(".vert") != std::string::npos) {
+            vertexShaders->append(QString::fromStdString(shaderFiles[i]));
+        }
+        else if (shaderFiles[i].find(".frag") != std::string::npos) {
+            fragShaders->append(QString::fromStdString(shaderFiles[i]));
+        }
+    }
+    // Remove the dups
+    sort(vertexShaders->begin(), vertexShaders->end());
+    vertexShaders->erase(unique(vertexShaders->begin(), vertexShaders->end()), vertexShaders->end());
+    sort(fragShaders->begin(), fragShaders->end());
+    fragShaders->erase(unique(fragShaders->begin(), fragShaders->end()), fragShaders->end());
+
+    QWidget *shaderTabsArray[] = {mainShaderTab, backShaderTab};
+    shader_setting *shadersSettings[] = {&recidia_settings.misc.main_shader, &recidia_settings.misc.back_shader};
+    
+    for(uint i=0; i < 2; i++) {
+        QGridLayout *shaderTabLayout = new QGridLayout;
+        shaderTabsArray[i]->setLayout(shaderTabLayout);
+
+
+        QLabel *vShaderLabel = new QLabel("Vertex Shader", this);
+        shaderTabLayout->addWidget(vShaderLabel, 0, 0);
+        QComboBox *vShaderComboBox = new QComboBox(this);
+        vShaderComboBox->addItems(*vertexShaders);
+        vShaderComboBox->setCurrentIndex(vShaderComboBox->findText(shadersSettings[i]->vertex));
+        QObject::connect(vShaderComboBox, &QComboBox::currentTextChanged,
+        [=](QString item) {
+            delete shadersSettings[i]->vertex;
+            shadersSettings[i]->vertex = new char[item.length()+1];
+            strcpy(shadersSettings[i]->vertex, item.toStdString().c_str());
+            
+            if (i == 0)
+                main_window->vulkan_window->shader_setting_change = 1;
+            else if (i == 1)
+                main_window->vulkan_window->shader_setting_change = 2;
+        });
+        shaderTabLayout->addWidget(vShaderComboBox, 1, 0);
+
+        QLabel *loopTimeLabel = new QLabel("Loop Time", this);
+        shaderTabLayout->addWidget(loopTimeLabel, 2, 0);
+        QSpinBox *loopTimeSpinBox = new QSpinBox(this);
+        loopTimeSpinBox->setRange(1, 32768);
+        loopTimeSpinBox->setValue(shadersSettings[i]->loop_time);
+        loopTimeSpinBox->setSuffix(" secs");
+        QObject::connect(loopTimeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+        [=](int value) {
+            shadersSettings[i]->loop_time = value;
+        });
+        shaderTabLayout->addWidget(loopTimeSpinBox, 3, 0);
+
+        shaderTabLayout->setColumnStretch(0, 3);
+
+        QLabel *fShaderLabel = new QLabel("Frag Shader", this);
+        shaderTabLayout->addWidget(fShaderLabel, 0, 1);
+        QComboBox *fShaderComboBox = new QComboBox(this);
+        fShaderComboBox->addItems(*fragShaders);
+        fShaderComboBox->setCurrentIndex(fShaderComboBox->findText(shadersSettings[i]->frag));
+        QObject::connect(fShaderComboBox, &QComboBox::currentTextChanged,
+        [=](QString item) {
+            delete shadersSettings[i]->frag;
+            shadersSettings[i]->frag = new char[item.length()+1];
+            strcpy(shadersSettings[i]->frag, item.toStdString().c_str());
+            
+            if (i == 0)
+                main_window->vulkan_window->shader_setting_change = 1;
+            else if (i == 1)
+                main_window->vulkan_window->shader_setting_change = 2;
+        }); 
+        shaderTabLayout->addWidget(fShaderComboBox, 1, 1);
+
+        shaderTabLayout->setColumnStretch(1, 3);
+
+        QLabel *powerLabel = new QLabel("Power", this);
+        shaderTabLayout->addWidget(powerLabel, 0, 2);
+        QSpinBox *powerSpinBox = new QSpinBox(this);
+        powerSpinBox->setRange(0, 10000);
+        powerSpinBox->setValue(shadersSettings[i]->power * 100);
+        powerSpinBox->setSuffix("%");
+        QObject::connect(powerSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+        [=](int value) {
+            shadersSettings[i]->power = (float) value / 100;
+        });
+        shaderTabLayout->addWidget(powerSpinBox, 1, 2);
+
+        QLabel *powerModLabel = new QLabel("Power Modifier", this);
+        shaderTabLayout->addWidget(powerModLabel, 2, 2);
+
+        QSplitter *powerModSpinBoxes = new QSplitter(this);
+        QDoubleSpinBox *powerModSpinBox1 = new QDoubleSpinBox(this);
+        powerModSpinBox1->setDecimals(3);
+        powerModSpinBox1->setRange(0.0, 1.0);
+        powerModSpinBox1->setValue(shadersSettings[i]->power_mod_range[0]);
+        powerModSpinBox1->setSingleStep(0.01);
+        QObject::connect(powerModSpinBox1, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+        [=](double value) {
+            shadersSettings[i]->power_mod_range[0] = value;
+
+            if (shadersSettings[i]->power_mod_range[0] > shadersSettings[i]->power_mod_range[1])
+                powerModSpinBox1->setValue(shadersSettings[i]->power_mod_range[1]);
+        });
+        powerModSpinBoxes->addWidget(powerModSpinBox1);
+
+        QDoubleSpinBox *powerModSpinBox2 = new QDoubleSpinBox(this);
+        powerModSpinBox2->setDecimals(3);
+        powerModSpinBox2->setRange(0.0, 1.0);
+        powerModSpinBox2->setValue(shadersSettings[i]->power_mod_range[1]);
+        powerModSpinBox2->setSingleStep(0.01);
+        QObject::connect(powerModSpinBox2, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+        [=](double value) {
+            shadersSettings[i]->power_mod_range[1] = value;
+
+            if (shadersSettings[i]->power_mod_range[1] < shadersSettings[i]->power_mod_range[0])
+                powerModSpinBox2->setValue(shadersSettings[i]->power_mod_range[0]);
+        });
+        powerModSpinBoxes->addWidget(powerModSpinBox2);
+        shaderTabLayout->addWidget(powerModSpinBoxes, 3, 2);
+
+        shaderTabLayout->setColumnStretch(2, 1);
+    }
+    
 
     if(!recidia_settings.misc.settings_menu)
         this->hide();

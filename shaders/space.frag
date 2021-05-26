@@ -25,7 +25,7 @@ layout(push_constant) uniform PushConstants {
 
 
 #define transverseSpeed zoom
-#define cloud 0.15 
+#define cloud 0.25 
  
 float field(in vec3 p) {    
     float strength = 7. + .03 * log(1.e-6 + fract(sin(constants.time) * 373.11));
