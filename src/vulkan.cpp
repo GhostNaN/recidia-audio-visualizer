@@ -344,6 +344,10 @@ void VulkanRenderer::releaseResources() {
         dev_funct->vkDestroyBuffer(vulkan_dev, back_vertex_buffer, nullptr);
         dev_funct->vkFreeMemory(vulkan_dev, back_vertex_buffer_mem, nullptr);
     }
+    if (main_index_buffer) {
+        dev_funct->vkDestroyBuffer(vulkan_dev, main_index_buffer, nullptr);
+        dev_funct->vkFreeMemory(vulkan_dev, main_index_buffer_mem, nullptr);
+    }
 
     if (main_pipeline) {
         dev_funct->vkDestroyPipeline(vulkan_dev, main_pipeline, nullptr);

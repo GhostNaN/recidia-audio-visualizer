@@ -101,9 +101,9 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         // Get input or enter bad/nothing for default
         printf("\nEnter device index:\n");
         char devBuffer[4];
-        fgets(devBuffer, 4, stdin);
-
-        deviceIndex = atoi(devBuffer); // If fail = 0 aka default pulse
+        char *fgetout = fgets(devBuffer, 4, stdin);
+        if (fgetout == devBuffer)
+            deviceIndex = atoi(devBuffer); // If fail = 0 aka default pulse
     }
     else {
         deviceIndex = display_audio_devices(deviceNames, pulseIndexes, portIndexes);

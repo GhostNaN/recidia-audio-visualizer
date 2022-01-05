@@ -204,7 +204,7 @@ void init_curses() {
                 }
 
             }
-            mvprintw(y, 0, printBarLine.c_str());
+            mvprintw(y, 0, "%s", printBarLine.c_str());
         }
 
         // Show changes in settings on scrren
