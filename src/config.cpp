@@ -8,7 +8,7 @@
 
 using namespace std;
 
-static const char VERSION[] = "0.3";
+static const char VERSION[] = "0.4";
 
 map<char, int> setttings_key_map;
 
