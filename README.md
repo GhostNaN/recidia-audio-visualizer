@@ -40,7 +40,7 @@ AUR package - https://aur.archlinux.org/packages/recidia-audio-visualizer/
 ```
 git clone --single-branch https://github.com/GhostNaN/recidia-audio-visualizer
 cd recidia-audio-visualizer
-meson build --prefix=/usr
+meson build --prefix=/usr/local
 ninja -C build
 ```
 And if you wish to install:
