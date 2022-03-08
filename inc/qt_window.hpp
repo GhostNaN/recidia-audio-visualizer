@@ -40,7 +40,7 @@ private:
     QSlider *plotWidthSlider;
     QSlider *gapWidthSlider;
     QPushButton *drawModeButton;
-    QSpinBox *fpsCapSpinBox;
+    // QSpinBox *fpsCapSpinBox;
     // Prevent multiple dialogs
     bool main_color_dialog_up = false;
     bool back_color_dialog_up = false;

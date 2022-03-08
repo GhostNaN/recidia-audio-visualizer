@@ -606,14 +606,14 @@ void VulkanRenderer::startNextFrame() {
     recidia_data.latency = (float) (utime_now() - recidia_data.start_time) / 1000;
 
     // Sleep for fps cap
-    double frameTime = 0;
-    double sleepTime = (1000 / (double) recidia_settings.design.fps_cap) * 1000;
-    while (sleepTime > frameTime) {
-        QApplication::processEvents(QEventLoop::AllEvents, 1);
-        usleep(100);
+    // double frameTime = 0;
+    // double sleepTime = (1000 / (double) recidia_settings.design.fps_cap) * 1000;
+    // while (sleepTime > frameTime) {
+    //     QApplication::processEvents(QEventLoop::AllEvents, 1);
+    //     usleep(100);
 
-        frameTime = utime_now() - last_frame_time;
-    }
+    //     frameTime = utime_now() - last_frame_time;
+    // }
     recidia_data.frame_time = utime_now() - last_frame_time;
     last_frame_time = utime_now();
 

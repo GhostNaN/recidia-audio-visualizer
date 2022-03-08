@@ -411,18 +411,18 @@ SettingsTabWidget::SettingsTabWidget() {
      });
     designTabLayout->addWidget(backColorButton, 3, 4);
 
-    QLabel *fpsCapLabel = new QLabel("FPS Cap:", this);
-    fpsCapLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    designTabLayout->addWidget(fpsCapLabel, 4, 3);
-    fpsCapSpinBox = new QSpinBox(this);
-    fpsCapSpinBox->setRange(1, recidia_settings.design.FPS_CAP.MAX);
-    fpsCapSpinBox->setValue(recidia_settings.design.fps_cap);
-    fpsCapSpinBox->setSuffix(" FPS");
-    QObject::connect(fpsCapSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-    [=](int value) {
-        recidia_settings.design.fps_cap = value;
-    });
-    designTabLayout->addWidget(fpsCapSpinBox, 4, 4);
+    // QLabel *fpsCapLabel = new QLabel("FPS Cap:", this);
+    // fpsCapLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    // designTabLayout->addWidget(fpsCapLabel, 4, 3);
+    // fpsCapSpinBox = new QSpinBox(this);
+    // fpsCapSpinBox->setRange(1, recidia_settings.design.FPS_CAP.MAX);
+    // fpsCapSpinBox->setValue(recidia_settings.design.fps_cap);
+    // fpsCapSpinBox->setSuffix(" FPS");
+    // QObject::connect(fpsCapSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+    // [=](int value) {
+    //     recidia_settings.design.fps_cap = value;
+    // });
+    // designTabLayout->addWidget(fpsCapSpinBox, 4, 4);
 
 
     QWidget *graphicsTab = new QWidget(this);
@@ -684,13 +684,13 @@ void SettingsTabWidget::change_setting(int change) {
             drawModeButton->pressed();
             break;
 
-        case FPS_CAP_DECREASE:
-            fpsCapSpinBox->setValue(fpsCapSpinBox->value() - 1);
-            fpsCapSpinBox->editingFinished();
-            break;
-        case FPS_CAP_INCREASE:
-            fpsCapSpinBox->setValue(fpsCapSpinBox->value() + 1);
-            fpsCapSpinBox->editingFinished();
-            break;
+        // case FPS_CAP_DECREASE:
+        //     fpsCapSpinBox->setValue(fpsCapSpinBox->value() - 1);
+        //     fpsCapSpinBox->editingFinished();
+        //     break;
+        // case FPS_CAP_INCREASE:
+        //     fpsCapSpinBox->setValue(fpsCapSpinBox->value() + 1);
+        //     fpsCapSpinBox->editingFinished();
+        //     break;
     }
 }
