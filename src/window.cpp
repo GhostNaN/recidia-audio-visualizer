@@ -82,7 +82,7 @@ int init_gui(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     QVulkanInstance inst;
-    inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
+    // inst.setLayers(QByteArrayList() << "VK_LAYER_KHRONOS_validation");
     inst.create();
 
     VulkanWindow *vulkanWindow = new VulkanWindow;
