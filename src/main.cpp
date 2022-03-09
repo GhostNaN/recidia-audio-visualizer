@@ -99,7 +99,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         }
 
         // Get input or enter bad/nothing for default
-        printf("\nEnter device index:\n");
+        printf("\nEnter audio device index:\n");
         char devBuffer[4];
         char *fgetout = fgets(devBuffer, 4, stdin);
         if (fgetout == devBuffer)
