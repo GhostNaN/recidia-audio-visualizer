@@ -225,16 +225,16 @@ static int port_record_callback( const void *inputBuffer, void *outputBuffer,
     (void) timeInfo;
     (void) statusFlags;
 
-    recidia_audio_data *data = userData;
+    recidia_audio_data *audio_data = userData;
 
     short *input = (short*) inputBuffer;
-    data->samples[data->frame_index] = (input[0] + input[1]) / 2; // Avg. of left [0] and right [1]
+    audio_data->samples[audio_data->frame_index] = (input[0] + input[1]) / 2; // Avg. of left [0] and right [1]
 
-    if (data->frame_index < *data->buffer_size) {
-        data->frame_index++;
+    if (audio_data->frame_index < *audio_data->buffer_size) {
+        audio_data->frame_index++;
     }
     else {
-        data->frame_index = 0;
+        audio_data->frame_index = 0;
     }
 
     return 0;

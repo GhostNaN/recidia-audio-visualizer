@@ -86,6 +86,21 @@ struct recidia_const_setting {
     char KEY_INCREASE;
 };
 
+struct rgba_color {
+    unsigned int red;
+    unsigned int green;
+    unsigned int blue;
+    unsigned int alpha;
+};
+
+struct shader_setting {
+    char *vertex;
+    char *frag;
+    uint loop_time;
+    float power;
+    float power_mod_range[2];
+};
+
 struct recidia_data_settings {
     float height_cap;
     recidia_const_setting<float> HEIGHT_CAP;
@@ -114,13 +129,6 @@ struct recidia_data_settings {
     bool stats;
 };
 
-struct rgba_color {
-    unsigned int red;
-    unsigned int green;
-    unsigned int blue;
-    unsigned int alpha;
-};
-
 struct recidia_design_settings {
     float draw_x;
     float draw_y;
@@ -140,25 +148,21 @@ struct recidia_design_settings {
     rgba_color back_color;
 };
 
-struct shader_setting {
-    char *vertex;
-    char *frag;
-    uint loop_time;
-    float power;
-    float power_mod_range[2];
+struct recidia_graphics_settings {
+    shader_setting main_shader;
+    shader_setting back_shader;
 };
 
 struct recidia_misc_settings {
     bool settings_menu;
     bool frameless;
-    shader_setting main_shader;
-    shader_setting back_shader;
 };
 
 // Global settings/data because it's used EVERYWHERE, passing is stupid
 struct recidia_settings_struct {
     struct recidia_data_settings data;
     struct recidia_design_settings design;
+    struct recidia_graphics_settings graphics;
     struct recidia_misc_settings misc;
 };
 extern struct recidia_settings_struct recidia_settings;

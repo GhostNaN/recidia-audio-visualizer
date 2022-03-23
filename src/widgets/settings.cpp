@@ -454,12 +454,11 @@ SettingsTabWidget::SettingsTabWidget() {
             }
         }
         catch (filesystem::filesystem_error const& ex) {
-            if (i == 3) {
-                throw std::runtime_error("Failed to find shaders folder!");
-                return;
-            }
+            continue;
         }
     }
+    if (shaderFiles.size() == 0)
+        throw std::runtime_error("Failed to find any shaders folder!");
 
     QStringList *vertexShaders = new QStringList;
     QStringList *fragShaders = new QStringList;
@@ -478,7 +477,7 @@ SettingsTabWidget::SettingsTabWidget() {
     fragShaders->erase(unique(fragShaders->begin(), fragShaders->end()), fragShaders->end());
 
     QWidget *shaderTabsArray[] = {mainShaderTab, backShaderTab};
-    shader_setting *shadersSettings[] = {&recidia_settings.misc.main_shader, &recidia_settings.misc.back_shader};
+    shader_setting *shadersSettings[] = {&recidia_settings.graphics.main_shader, &recidia_settings.graphics.back_shader};
     
     for(uint i=0; i < 2; i++) {
         QGridLayout *shaderTabLayout = new QGridLayout;

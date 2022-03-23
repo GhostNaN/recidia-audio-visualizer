@@ -323,8 +323,8 @@ void VulkanRenderer::initResources() {
     createBuffer(VERTEX_BUFFER_SIZE, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, main_vertex_buffer, main_vertex_buffer_mem);
     createBuffer(INDEX_BUFFER_SIZE, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, main_index_buffer, main_index_buffer_mem);
 
-    createPipline(recidia_settings.misc.back_shader, back_pipelineLayout, back_pipeline, 0);
-    createPipline(recidia_settings.misc.main_shader, main_pipelineLayout, main_pipeline, 1);
+    createPipline(recidia_settings.graphics.back_shader, back_pipelineLayout, back_pipeline, 0);
+    createPipline(recidia_settings.graphics.main_shader, main_pipelineLayout, main_pipeline, 1);
 }
 
 void VulkanRenderer::initSwapChainResources() {
@@ -525,7 +525,7 @@ static void draw_background(VkCommandBuffer &commandBuffer, VkPipelineLayout &pi
 
     dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    PushConstants constants = get_push_constants(recidia_settings.misc.back_shader);
+    PushConstants constants = get_push_constants(recidia_settings.graphics.back_shader);
     dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, 
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
 
@@ -537,7 +537,7 @@ static void draw_plots(VkCommandBuffer &commandBuffer, VkPipelineLayout &pipelin
 
     dev_funct->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    PushConstants constants = get_push_constants(recidia_settings.misc.main_shader);
+    PushConstants constants = get_push_constants(recidia_settings.graphics.main_shader);
     dev_funct->vkCmdPushConstants(commandBuffer, pipelineLayout, 
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &constants);
 
@@ -631,7 +631,7 @@ void VulkanRenderer::recreatePipline() {
         dev_funct->vkDestroyPipelineLayout(vulkan_dev, main_pipelineLayout, nullptr);
         main_pipelineLayout = VK_NULL_HANDLE;
 
-        createPipline(recidia_settings.misc.main_shader, main_pipelineLayout, main_pipeline, 1);
+        createPipline(recidia_settings.graphics.main_shader, main_pipelineLayout, main_pipeline, 1);
     }
     else if (vulkan_window->shader_setting_change == 2) {
         dev_funct->vkDestroyPipeline(vulkan_dev, back_pipeline, nullptr);
@@ -640,7 +640,7 @@ void VulkanRenderer::recreatePipline() {
         dev_funct->vkDestroyPipelineLayout(vulkan_dev, back_pipelineLayout, nullptr);
         back_pipelineLayout = VK_NULL_HANDLE;
     
-        createPipline(recidia_settings.misc.back_shader, back_pipelineLayout, back_pipeline, 0);
+        createPipline(recidia_settings.graphics.back_shader, back_pipelineLayout, back_pipeline, 0);
     }
     this->initSwapChainResources();
 }

@@ -92,3 +92,4 @@ int display_audio_devices(vector<string> devices, vector<uint> pulse_indexes, ve
 
     return index;
 }
+ 

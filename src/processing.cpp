@@ -211,7 +211,7 @@ void init_processing(recidia_audio_data *audio_data) {
         pinvVector = get_savgol_coeffs(savgolWindowSize, recidia_settings.data.savgol_filter.poly_order);
 
     while (1) {
-        u_int64_t timerStart = utime_now();
+        auto timerStart = utime_now();
 
         // Handling volatile vars
         if (audioBufferSize != recidia_settings.data.audio_buffer_size) {
@@ -252,17 +252,10 @@ void init_processing(recidia_audio_data *audio_data) {
             else
                 savgolWindowSize = 0;
         }
+        
 
-        // Convert samples to double for FFTW
-        for (i=0; i < audioBufferSize; i++ ) {
-            fftIn[i] = (double) audio_data->samples[i];
-            // Set Freq test
-//            fftIn[i] =  32768 * sin(2 * 3.1415 * 5000 * (i / (double) 44100));
-        }
-
-        // For latency display
-        recidia_data.start_time = utime_now();
-
+        // Copy audio data and run FFT
+        copy(audio_data->samples, audio_data->samples + audioBufferSize, fftIn);
         fftw_execute(fftPlan);
 
         // Absolute and normalized of FFT output
@@ -271,7 +264,8 @@ void init_processing(recidia_audio_data *audio_data) {
             fftOut[i-1] = abs(fftOut[i]) / (double) audioBufferSize;
         }
 
-        // Apply plot table
+
+        // Apply plot table by using max num between plots
         for (i=0; i < plotsCount; i++) {
             uint minNum = chartTable[i];
             uint maxNum = chartTable[i+1];
@@ -282,8 +276,11 @@ void init_processing(recidia_audio_data *audio_data) {
                 proArray[i] = *max_element(fftOut + maxNum, fftOut + minNum);
         }
 
+
         // Savitzky Golay Filter
         if (savgolWindowSize >= recidia_settings.data.savgol_filter.poly_order + 2) {
+            // auto benchStart = utime_now();
+
             int halfWindow = (savgolWindowSize - 1) / 2;
 
             vector<float> filterIn(proArray, proArray+plotsCount);
@@ -313,7 +310,10 @@ void init_processing(recidia_audio_data *audio_data) {
                 }
             }
             copy(filterOut.begin(), filterOut.end(), proArray);
+
+            // printf("Savgol: %li \n", (utime_now() - benchStart));
         }
+
 
         // Interpolation
         if (interp) {
@@ -337,9 +337,8 @@ void init_processing(recidia_audio_data *audio_data) {
         }
 
         // Send out plots
-        for (i=0; i < plotsCount; i++ ) {
-            recidia_data.plots[i] = proArray[i];
-        }
+        copy(proArray, proArray + plotsCount, recidia_data.plots);
+        
 
         // Sleep for poll time
         uint latency = utime_now() - timerStart;

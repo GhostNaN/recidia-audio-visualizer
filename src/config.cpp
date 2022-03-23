@@ -167,8 +167,8 @@ void init_recidia_settings(int GUI) {
     recidia_settings.design.draw_mode = 0;
     recidia_settings.design.main_color = {255, 255, 255, 255};
     recidia_settings.design.back_color = {50, 50, 50, 150};
-    recidia_settings.misc.main_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
-    recidia_settings.misc.back_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
+    recidia_settings.graphics.main_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
+    recidia_settings.graphics.back_shader = {NULL, NULL, 1500, 1.0, {0.0, 0.5}};
     recidia_settings.design.draw_chars = NULL;
     recidia_settings.data.height_cap = 500.0;
     recidia_settings.data.HEIGHT_CAP.MAX = 32768.0;
@@ -433,8 +433,8 @@ void get_config_settings(int GUI) {
                 {   
                     string shaderName;
                     string shaderTypes[] = {"main", "back"};
-                    shader_setting *shaders[] = {&recidia_settings.misc.main_shader,
-                                                &recidia_settings.misc.back_shader};
+                    shader_setting *shaders[] = {&recidia_settings.graphics.main_shader,
+                                                &recidia_settings.graphics.back_shader};
 
                     for (uint i=0; i < 2; i++) {
                         shaderName = "";
