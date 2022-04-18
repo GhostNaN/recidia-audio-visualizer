@@ -76,16 +76,17 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 
     // Get device index
     uint deviceIndex = 0;
+    int d = 0;
+    if (pulseIndexes.size())
+        d = 1; // d as in default
     if (!GUI) {
         i = 0;  
-        if (pulseIndexes.size()) 
-            i = 1; // Pulse default is 0
 
         if (pulseHead) {
             printf("|||PulseAudio Devices|||\n");
             printf("[0] Default Output\n");
             for(i=0; i < pulseIndexes.size(); i++) {
-                printf("[%i] %s\n", i, deviceNames[i].c_str());
+                printf("[%i] %s\n", i+d, deviceNames[i].c_str());
             }
             printf("\n");
         }
@@ -93,7 +94,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         if (portHead) {
             printf("|||PortAudio Devices|||\n");
             for(j=0; j < portIndexes.size(); j++) {
-                printf("[%i] %s\n", j+i, deviceNames[j+i].c_str());
+                printf("[%i] %s\n", j+i+d, deviceNames[j+i].c_str());
             }
         }
 
@@ -113,7 +114,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     else {
         // Subtract to account for default device being 0
         if (pulseIndexes.size()) 
-            deviceIndex -= 1;
+            deviceIndex -= d;
     }
 
     if (deviceIndex >= pulseIndexes.size() + portIndexes.size()) {
