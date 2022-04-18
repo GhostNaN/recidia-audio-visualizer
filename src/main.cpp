@@ -128,9 +128,13 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     
     struct pulse_device_info *pulseDevice = NULL;
     while (pulseHead != NULL) {
-
-        if (i == pulseIndexes[deviceIndex])
-            pulseDevice = pulseHead;
+        
+        if (deviceIndex < pulseIndexes.size()) {
+            if (i == pulseIndexes[deviceIndex])
+                pulseDevice = pulseHead;
+            else
+                free(pulseHead);
+        }
         else
             free(pulseHead);
 
