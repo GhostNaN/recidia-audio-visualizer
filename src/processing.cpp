@@ -256,6 +256,9 @@ void init_processing(recidia_audio_data *audio_data) {
 
         // Copy audio data and run FFT
         copy(audio_data->samples, audio_data->samples + audioBufferSize, fftIn);
+        // For latency display
+        recidia_data.start_time = utime_now();
+        
         fftw_execute(fftPlan);
 
         // Absolute and normalized of FFT output

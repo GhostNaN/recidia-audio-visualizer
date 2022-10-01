@@ -25,6 +25,23 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 
     vector<string> deviceNames;
 
+    // Get pipewire devices to choose from
+    struct pipe_device_info *pipeHead;
+    pipeHead = get_pipe_devices_info();
+
+    struct pipe_device_info *tempPipeHead;
+    tempPipeHead = pipeHead;
+
+    vector<uint> pipeIndexes;
+    i = 0;
+    while (tempPipeHead != NULL) {
+        deviceNames.push_back(tempPipeHead->name);
+        pipeIndexes.push_back(i);
+
+        tempPipeHead = tempPipeHead->next;
+        i++;
+    }
+
     // Get pulseaudio devices to choose from
     struct pulse_device_info *pulseHead;
     pulseHead = get_pulse_devices_info();
@@ -82,7 +99,14 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     if (!GUI) {
         i = 0;  
 
-        if (pulseHead) {
+        if (pipeHead) {
+            printf("|||Pipewire Nodes|||\n");
+            for(i=0; i < pipeIndexes.size(); i++) {
+                printf("[%i] %s\n", i, deviceNames[i].c_str());
+            }
+            printf("\n");
+        }
+        else if (pulseHead) {
             printf("|||PulseAudio Devices|||\n");
             printf("[0] Default Output\n");
             for(i=0; i < pulseIndexes.size(); i++) {
@@ -94,7 +118,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         if (portHead) {
             printf("|||PortAudio Devices|||\n");
             for(j=0; j < portIndexes.size(); j++) {
-                printf("[%i] %s\n", j+i+d, deviceNames[j+i].c_str());
+                printf("[%i] %s\n", i+j+d, deviceNames[i+j].c_str());
             }
         }
 
@@ -106,7 +130,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
             deviceIndex = atoi(devBuffer); // If fail = 0 aka default pulse
     }
     else {
-        deviceIndex = display_audio_devices(deviceNames, pulseIndexes, portIndexes);
+        deviceIndex = display_audio_devices(deviceNames, pipeIndexes, pulseIndexes, portIndexes);
     }
 
     if (deviceIndex == 0)
@@ -117,7 +141,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
             deviceIndex -= d;
     }
 
-    if (deviceIndex >= pulseIndexes.size() + portIndexes.size()) {
+    if (deviceIndex >= pipeIndexes.size() + pulseIndexes.size() + portIndexes.size()) {
         fprintf(stderr, "Error: Bad device index\n");
         exit(EXIT_FAILURE);
     }
@@ -125,6 +149,18 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
 
     // Find the device selected
     i = 0;
+
+    struct pipe_device_info *pipeDevice = NULL;
+    while (pipeHead != NULL) {
+
+        if (i == deviceIndex)
+            pipeDevice = pipeHead;
+        else
+            free(pipeHead);
+
+        pipeHead = pipeHead->next;
+        i++;
+    }
     
     struct pulse_device_info *pulseDevice = NULL;
     while (pulseHead != NULL) {
@@ -155,12 +191,18 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     }
 
     // Begin collecting audio data
-    if (pulseDevice) {
+    if (pipeDevice) {
+        audio_data->pipe_device = pipeDevice;
+        // audio_data->sample_rate = audio_data->pipe_device->rate;
+        audio_data->sample_rate = 48000;
+        pipe_collect_audio_data(audio_data);
+    }
+    else if (pulseDevice) {
         audio_data->pulse_device = pulseDevice;
         audio_data->sample_rate = audio_data->pulse_device->rate;
         pulse_collect_audio_data(audio_data);
     }
-    else {
+    else if (portDevice) {
         audio_data->port_device = portDevice;
         audio_data->sample_rate = audio_data->port_device->rate;
         port_collect_audio_data(audio_data);

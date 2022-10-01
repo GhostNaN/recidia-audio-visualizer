@@ -21,11 +21,10 @@
 - vulkan-driver
   - Visualizer renderer
   
-#### Must have at least one:
-- portaudio(optional)
-  - Audio data collection (Input Only)
-- pulseaudio/pipewire-pulse(optional)
-  - Audio data collection
+#### Must have at least one for audio data collection:
+- pipewire
+- pulseaudio
+- portaudio(Input Only)
 
 ## Installers
 ### Arch:

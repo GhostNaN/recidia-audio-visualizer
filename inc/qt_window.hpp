@@ -13,7 +13,7 @@
 
 #pragma once
 
-int display_audio_devices(std::vector<std::string> devices, std::vector<uint> pulse_indexes, std::vector<uint> port_indexes);
+int display_audio_devices(std::vector<std::string> devices, std::vector<uint> pipe_indexes, std::vector<uint> pulse_indexes, std::vector<uint> port_indexes);
 
 int init_gui(int argc, char *argv[]);
 

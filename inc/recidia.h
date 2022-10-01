@@ -40,6 +40,13 @@ enum setting_changes {
 const int PULSE_INPUT = 0;
 const int  PULSE_MONITOR = 1;
 
+struct pipe_device_info {
+    char *name;
+    int id;
+    int rate;
+    struct pipe_device_info *next;
+};
+
 struct pulse_device_info {
     char *name;
     char *source_name;
@@ -60,6 +67,7 @@ typedef struct recidia_audio_data {
     unsigned int frame_index;
     unsigned int *buffer_size;
     unsigned int sample_rate;
+    struct pipe_device_info *pipe_device;
     struct pulse_device_info *pulse_device;
     struct port_device_info *port_device;
     short *samples;
@@ -68,12 +76,12 @@ typedef struct recidia_audio_data {
 // C code
 #ifdef __cplusplus
 extern "C" {
+    struct pipe_device_info *get_pipe_devices_info();
     struct pulse_device_info *get_pulse_devices_info();
-    
     struct port_device_info *get_port_devices_info();
-    
-    void pulse_collect_audio_data(recidia_audio_data *audio_data);
 
+    void pipe_collect_audio_data(recidia_audio_data *audio_data);
+    void pulse_collect_audio_data(recidia_audio_data *audio_data);
     void port_collect_audio_data(recidia_audio_data *audio_data);
 }
 
