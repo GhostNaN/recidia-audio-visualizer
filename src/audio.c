@@ -62,10 +62,6 @@ static void registry_event_global(void *data, uint32_t id, uint32_t permissions,
     device->name = calloc((strlen(pw_node_name) + 1) , sizeof(char));
     strcpy(device->name, pw_node_name);
 
-    // printf("object: id:%u type:%s/%d\n", id, type, version);
-    // printf("Name: %s\n", pw_node_name);
-    // printf("ID: %i\n", id);
-
     device->next = pipe_head;
     pipe_head = device;
 }
@@ -138,41 +134,35 @@ static void on_process(void *userdata) {
         pw_log_warn("out of buffers: %m");
         return;
     }
-    short int *samples = pw_buffer->buffer->datas->data;
+    short int *samples = pw_buffer->buffer->datas[0].data;
     if (samples == NULL)
         return;
-
-    // memcpy(data->audio_data->samples, samples, *data->audio_data->buffer_size * sizeof(samples[0]));
     
-    int sample_size = SPA_MIN(pw_buffer->buffer->datas->chunk->size, pw_buffer->buffer->datas->maxsize);
+    int sample_size = SPA_MIN(pw_buffer->buffer->datas[0].chunk->size, pw_buffer->buffer->datas[0].maxsize);
+    sample_size = sample_size / sizeof(short int); // Sample size is in bytes so correct to short int
 
-    if (sample_size >= *data->audio_data->buffer_size) {
-        // Get the latest sample with a offset
-        int sample_offset = sample_size - *data->audio_data->buffer_size;
-        memcpy(data->audio_data->samples, samples+sample_offset, *data->audio_data->buffer_size * sizeof(samples[0]));
-    }
-    else {
-        int sample_offset = 0;
-        int memcpy_size = 0;
-        while(sample_size > 0) {
+    // Copy data for processing
+    int sample_offset = 0;
+    int memcpy_size = 0;
+    while(sample_size > 0) {
 
-            int buffer_free = *data->audio_data->buffer_size - data->audio_data->frame_index; // 4000 - 1000
+        int buffer_free = *data->audio_data->buffer_size - data->audio_data->frame_index;
 
-            if (buffer_free >= sample_size)
-                memcpy_size = sample_size;
-            else 
-                memcpy_size = buffer_free;
-            
-            memcpy(data->audio_data->samples+data->audio_data->frame_index, samples+sample_offset, memcpy_size * sizeof(samples[0]));
-            sample_size -= memcpy_size; // 2000 - 1000 = 1000
-            sample_offset += memcpy_size;
+        if (buffer_free >= sample_size)
+            memcpy_size = sample_size;
+        else 
+            memcpy_size = buffer_free;
+        
+        memcpy(data->audio_data->samples+data->audio_data->frame_index, samples+sample_offset, memcpy_size * sizeof(samples[0]));
+        sample_size -= memcpy_size;
+        sample_offset += memcpy_size;
 
-            data->audio_data->frame_index += memcpy_size;
-            if (data->audio_data->frame_index >= *data->audio_data->buffer_size)
-                data->audio_data->frame_index = 0;
-        }
+        data->audio_data->frame_index += memcpy_size;
+        if (data->audio_data->frame_index >= *data->audio_data->buffer_size)
+            data->audio_data->frame_index = 0;
     }
     
+
     pw_stream_queue_buffer(data->stream, pw_buffer);
 }
 

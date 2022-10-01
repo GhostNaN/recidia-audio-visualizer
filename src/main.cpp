@@ -194,7 +194,7 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
     if (pipeDevice) {
         audio_data->pipe_device = pipeDevice;
         // audio_data->sample_rate = audio_data->pipe_device->rate;
-        audio_data->sample_rate = 48000;
+        audio_data->sample_rate = 48000; // placeholder for now
         pipe_collect_audio_data(audio_data);
     }
     else if (pulseDevice) {
