@@ -193,6 +193,7 @@ static void *init_pipe_audio_collection(void* data) {
             pw_main_loop_get_loop(loop),
             "recidia capture",
             pw_properties_new(
+                    PW_KEY_NODE_NAME, "recidia",
                     PW_KEY_MEDIA_TYPE, "Audio",
                     PW_KEY_MEDIA_CATEGORY, "Capture",
                     NULL),
