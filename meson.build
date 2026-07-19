@@ -17,23 +17,7 @@ if pipewire.found()
 endif
 
 
-pulse = dependency('libpulse', required : false)
-pulse_simple = dependency('libpulse-simple', required : false)
-if not pipewire.found()
-    if pulse.found() and pulse_simple.found()
-        add_project_arguments('-D PULSEAUDIO', language : 'c')
-        audio_check = true
-    endif
-endif
-
-
-portaudio = dependency('portaudio-2.0', required : false)
-if portaudio.found()
-    add_project_arguments('-D PORTAUDIO', language : 'c')
-    audio_check = true
-endif
-
-assert(audio_check, 'You need PulseAudio and/or PortAudio')
+assert(audio_check, 'You need Pipewire to capture audio')
 
 qt6 = dependency('qt6', modules: ['Core', 'Gui', 'Widgets'])
 
@@ -43,4 +27,4 @@ executable(meson.project_name(), ['src/main.cpp', 'src/audio.c', 'src/processing
 'src/curses.cpp', 'src/config.cpp', 'src/window.cpp', 'src/vulkan.cpp',
 'src/widgets/devices.cpp', 'src/widgets/settings.cpp', 'src/widgets/stats.cpp'],
 include_directories : ['inc'],
-dependencies: [gsl, fftw, threads, curses, libconfig, pipewire, pulse_simple, portaudio, qt6, shaderc], install: true)
+dependencies: [gsl, fftw, threads, curses, libconfig, pipewire, qt6, shaderc], install: true)

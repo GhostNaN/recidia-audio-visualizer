@@ -20,11 +20,8 @@
   - GUI support
 - vulkan-driver
   - Visualizer renderer
-  
-#### Must have at least one for audio data collection:
 - pipewire
-- pulseaudio
-- portaudio(Input Only)
+  - Audio collection
 
 ## Installers
 ### Arch:

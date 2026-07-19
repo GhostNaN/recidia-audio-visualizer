@@ -47,29 +47,11 @@ struct pipe_device_info {
     struct pipe_device_info *next;
 };
 
-struct pulse_device_info {
-    char *name;
-    char *source_name;
-    int rate;
-    int mode;
-    int _default;
-    struct pulse_device_info *next;
-};
-
-struct port_device_info {
-    char *name;
-    int index;
-    int rate;
-    struct port_device_info *next;
-};
-
 typedef struct recidia_audio_data {
     unsigned int frame_index;
     unsigned int *buffer_size;
     unsigned int sample_rate;
     struct pipe_device_info *pipe_device;
-    struct pulse_device_info *pulse_device;
-    struct port_device_info *port_device;
     short *samples;
 } recidia_audio_data;
 
@@ -77,12 +59,8 @@ typedef struct recidia_audio_data {
 #ifdef __cplusplus
 extern "C" {
     struct pipe_device_info *get_pipe_devices_info();
-    struct pulse_device_info *get_pulse_devices_info();
-    struct port_device_info *get_port_devices_info();
 
     void pipe_collect_audio_data(recidia_audio_data *audio_data);
-    void pulse_collect_audio_data(recidia_audio_data *audio_data);
-    void port_collect_audio_data(recidia_audio_data *audio_data);
 }
 
 template <typename T> 

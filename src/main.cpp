@@ -21,7 +21,7 @@ u_int64_t utime_now() {
 }
 
 void get_audio_device(recidia_audio_data *audio_data, int GUI) {
-    uint i, j;
+    uint i;
 
     vector<string> deviceNames;
 
@@ -42,85 +42,16 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
         i++;
     }
 
-    // Get pulseaudio devices to choose from
-    struct pulse_device_info *pulseHead;
-    pulseHead = get_pulse_devices_info();
-
-    struct pulse_device_info *tempPulseHead;
-    tempPulseHead = pulseHead;
-
-    // Sort output/input
-    int pulseDefaultIndex = 0;
-    vector<uint> pulseIndexes;
-    i=0; j=0;
-    while (tempPulseHead != NULL) {
-
-        if (tempPulseHead->mode == PULSE_MONITOR) {
-            deviceNames.insert(deviceNames.begin() + i, "Output: " + (string) tempPulseHead->name);
-            pulseIndexes.insert(pulseIndexes.begin() + i, j);
-            // Index default device
-            if (tempPulseHead->_default)
-                pulseDefaultIndex = i;
-
-            i++;
-        }
-        else {
-            deviceNames.push_back("Input: " + (string) tempPulseHead->name);
-            pulseIndexes.push_back(j);
-        }
-
-        tempPulseHead = tempPulseHead->next;
-        j++;
-    }
-
-    // Get portaudio devices to choose from
-    vector<uint> portIndexes;
-
-    struct port_device_info *portHead;
-    portHead = get_port_devices_info();
-
-    struct port_device_info *tempPortHead;
-    tempPortHead = portHead;
-
-    i = 0;
-    while (tempPortHead != NULL) {
-        deviceNames.push_back("Input: " + (string) tempPortHead->name);
-        portIndexes.push_back(i);
-
-        tempPortHead = tempPortHead->next;
-        i++;
-    }
-
     // Get device index
     uint deviceIndex = 0;
-    int d = 0;
-    if (pulseIndexes.size())
-        d = 1; // d as in default
     if (!GUI) {
         i = 0;  
 
-        if (pipeHead) {
-            printf("|||Pipewire Nodes|||\n");
-            for(i=0; i < pipeIndexes.size(); i++) {
-                printf("[%i] %s\n", i, deviceNames[i].c_str());
-            }
-            printf("\n");
+        printf("|||Pipewire Nodes|||\n");
+        for(i=0; i < pipeIndexes.size(); i++) {
+            printf("[%i] %s\n", i, deviceNames[i].c_str());
         }
-        else if (pulseHead) {
-            printf("|||PulseAudio Devices|||\n");
-            printf("[0] Default Output\n");
-            for(i=0; i < pulseIndexes.size(); i++) {
-                printf("[%i] %s\n", i+d, deviceNames[i].c_str());
-            }
-            printf("\n");
-        }
-
-        if (portHead) {
-            printf("|||PortAudio Devices|||\n");
-            for(j=0; j < portIndexes.size(); j++) {
-                printf("[%i] %s\n", i+j+d, deviceNames[i+j].c_str());
-            }
-        }
+        printf("\n");
 
         // Get input or enter bad/nothing for default
         printf("\nEnter audio device index:\n");
@@ -130,83 +61,37 @@ void get_audio_device(recidia_audio_data *audio_data, int GUI) {
             deviceIndex = atoi(devBuffer); // If fail = 0 aka default pulse
     }
     else {
-        deviceIndex = display_audio_devices(deviceNames, pipeIndexes, pulseIndexes, portIndexes);
+        deviceIndex = display_audio_devices(deviceNames, pipeIndexes);
     }
 
-    if (deviceIndex == 0)
-        deviceIndex = pulseDefaultIndex;
-    else {
-        // Subtract to account for default device being 0
-        if (pulseIndexes.size()) 
-            deviceIndex -= d;
-    }
-
-    if (deviceIndex >= pipeIndexes.size() + pulseIndexes.size() + portIndexes.size()) {
+    if (deviceIndex >= pipeIndexes.size()) {
         fprintf(stderr, "Error: Bad device index\n");
         exit(EXIT_FAILURE);
     }
 
-
     // Find the device selected
     i = 0;
-
     struct pipe_device_info *pipeDevice = NULL;
+
     while (pipeHead != NULL) {
+        struct pipe_device_info *next = pipeHead->next; // Save the next pointer first
 
-        if (i == deviceIndex)
+        if (i == deviceIndex) {
             pipeDevice = pipeHead;
-        else
+        } else {
             free(pipeHead);
-
-        pipeHead = pipeHead->next;
-        i++;
-    }
-    
-    struct pulse_device_info *pulseDevice = NULL;
-    while (pulseHead != NULL) {
-        
-        if (deviceIndex < pulseIndexes.size()) {
-            if (i == pulseIndexes[deviceIndex])
-                pulseDevice = pulseHead;
-            else
-                free(pulseHead);
         }
-        else
-            free(pulseHead);
 
-        pulseHead = pulseHead->next;
-        i++;
-    }
-
-    struct port_device_info *portDevice = NULL;
-    while (portHead != NULL) {
-
-        if (i == deviceIndex)
-            portDevice = portHead;
-        else
-            free(portHead);
-
-        portHead = portHead->next;
+        pipeHead = next;
         i++;
     }
 
     // Begin collecting audio data
-    if (pipeDevice) {
-        audio_data->pipe_device = pipeDevice;
-        // audio_data->sample_rate = audio_data->pipe_device->rate;
-        audio_data->sample_rate = 48000; // placeholder for now
-        pipe_collect_audio_data(audio_data);
-    }
-    else if (pulseDevice) {
-        audio_data->pulse_device = pulseDevice;
-        audio_data->sample_rate = audio_data->pulse_device->rate;
-        pulse_collect_audio_data(audio_data);
-    }
-    else if (portDevice) {
-        audio_data->port_device = portDevice;
-        audio_data->sample_rate = audio_data->port_device->rate;
-        port_collect_audio_data(audio_data);
-    }
+    audio_data->pipe_device = pipeDevice;
+    // audio_data->sample_rate = audio_data->pipe_device->rate;
+    audio_data->sample_rate = 48000; // placeholder for now
+    pipe_collect_audio_data(audio_data);
+
 }
 
 int main(int argc, char **argv) {
